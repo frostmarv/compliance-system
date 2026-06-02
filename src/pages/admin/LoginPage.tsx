@@ -41,7 +41,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm">
-        <h2 className="text-xl font-bold mb-4 text-center">🔐 Admin Login</h2>
+        <h2 className="text-xl font-bold mb-4 text-center">🔐 Login</h2>
         {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
         <form onSubmit={handleLogin} className="space-y-4">
           <input
