@@ -186,8 +186,8 @@ export default function Sidebar() {
                 <span>Soal</span>
               </NavLink>
               <NavLink
-                to="/admin/hasil"
-                className={`${subBase} ${isActive('/admin/hasil') ? subActive : subIdle}`}
+                to="/admin/quiz/hasil"
+                className={`${subBase} ${isActive('/admin/quiz/hasil') ? subActive : subIdle}`}
               >
                 <IconHasil />
                 <span>Hasil Ujian</span>
