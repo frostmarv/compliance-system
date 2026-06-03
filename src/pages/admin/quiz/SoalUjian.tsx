@@ -13,8 +13,8 @@ interface TrainingSchedule {
   id: string
   training_type_id: string
   factory: number | null
-  starts_at: string
-  ends_at: string
+  starts_at: string | null
+  ends_at: string | null
   is_manually_locked: boolean
 }
 
@@ -167,7 +167,7 @@ function ModalSchedule({
   const [factory, setFactory] = useState<string>(schedule?.factory?.toString() ?? 'null')
   
   // Helper: Format date for input (local time)
-  const formatDateForInput = (isoString?: string) => {
+  const formatDateForInput = (isoString?: string | null) => {
     if (!isoString) return ''
     const d = new Date(isoString)
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
