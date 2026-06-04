@@ -7,7 +7,7 @@ interface Materi5RProps {
   onSelesai: () => void
 }
 
-// ─── DATA ───────────────────────────────────────────────────────────────────
+// ─── DATA ────────────────────────────────────────────────────────────────────
 
 const PILAR = [
   {
@@ -142,648 +142,42 @@ const MANFAAT = [
   { kode: 'M', label: 'Moral', detail: 'Turnover rendah, absensi baik, semangat kerja tinggi' },
 ]
 
-// Slides: 0 = cover, 1 = pendahuluan, 2 = masalah, 3 = manfaat, 4..8 = S1..S5, 9 = finish
 const TOTAL_SLIDES = 10
 
-// ─── STYLES ──────────────────────────────────────────────────────────────────
-
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
-.sr-wrapper {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  background: #F0FAF9;
-  min-height: 100vh;
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  -webkit-text-size-adjust: 100%;
-}
-
-/* ── TOP BAR ── */
-.sr-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: #fff;
-  border-bottom: 1px solid #D4EDE9;
-  padding: 0 12px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.sr-logos {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-.sr-logo {
-  height: 28px;
-  width: auto;
-  object-fit: contain;
-  max-width: 80px;
-}
-.sr-logo-divider {
-  width: 1px;
-  height: 20px;
-  background: #D4EDE9;
-  flex-shrink: 0;
-}
-.sr-progress-wrap {
-  flex: 1;
-  min-width: 0;
-  max-width: 120px;
-}
-.sr-progress-track {
-  height: 4px;
-  background: #D4EDE9;
-  border-radius: 99px;
-  overflow: hidden;
-}
-.sr-progress-fill {
-  height: 100%;
-  background: #329F96;
-  border-radius: 99px;
-  transition: width 0.4s ease;
-}
-.sr-progress-label {
-  font-size: 10px;
-  color: #329F96;
-  font-weight: 600;
-  margin-top: 3px;
-  text-align: right;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-/* ── SLIDE CONTAINER ── */
-.sr-slides {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
-.sr-slide {
-  display: none;
-  min-height: calc(100dvh - 56px - 64px);
-  flex-direction: column;
-  animation: sr-fadein 0.35s ease;
-  -webkit-overflow-scrolling: touch;
-}
-.sr-slide.active {
-  display: flex;
-}
-@keyframes sr-fadein {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ── SCROLL INDICATOR ── */
-.sr-scroll-hint {
-  position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 90;
-  background: rgba(13, 61, 58, 0.95);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  animation: sr-hint-pulse 2s ease-in-out infinite, sr-hint-fadein 0.3s ease;
-  pointer-events: none;
-  white-space: nowrap;
-}
-.sr-scroll-hint::after {
-  content: '';
-  width: 6px; height: 6px;
-  border-right: 2px solid #329F96;
-  border-bottom: 2px solid #329F96;
-  transform: rotate(45deg);
-  animation: sr-hint-bounce 1.5s ease infinite;
-}
-@keyframes sr-hint-pulse {
-  0%, 100% { opacity: 0.95; transform: translateX(-50%) scale(1); }
-  50% { opacity: 1; transform: translateX(-50%) scale(1.02); }
-}
-@keyframes sr-hint-bounce {
-  0%, 100% { transform: rotate(45deg) translate(0, 0); }
-  50% { transform: rotate(45deg) translate(3px, 3px); }
-}
-@keyframes sr-hint-fadein {
-  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-  to { opacity: 0.95; transform: translateX(-50%) translateY(0); }
-}
-.sr-scroll-hint.hidden {
-  display: none;
-}
-
-/* ── BOTTOM NAV ── */
-.sr-nav {
-  position: sticky;
-  bottom: 0;
-  z-index: 100;
-  background: #fff;
-  border-top: 1px solid #D4EDE9;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  gap: 8px;
-  -webkit-padding-bottom: env(safe-area-inset-bottom);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.sr-nav-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1.5px solid #D4EDE9;
-  background: #fff;
-  cursor: pointer;
-  transition: all 0.15s;
-  color: #329F96;
-  font-size: 20px;
-  font-weight: 700;
-  flex-shrink: 0;
-  min-width: 44px;
-  -webkit-tap-highlight-color: transparent;
-  line-height: 1;
-}
-.sr-nav-btn:active:not(:disabled) { 
-  background: #E6F6F5; 
-  border-color: #329F96; 
-  transform: scale(0.98);
-}
-.sr-nav-btn:hover:not(:disabled) { background: #E6F6F5; border-color: #329F96; }
-.sr-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.sr-nav-dots {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  justify-content: center;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0 4px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.sr-nav-dots::-webkit-scrollbar { display: none; }
-.sr-nav-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: #C8E6E4;
-  transition: all 0.2s;
-  flex-shrink: 0;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  min-width: 8px;
-  -webkit-tap-highlight-color: transparent;
-}
-.sr-nav-dot:active { transform: scale(1.2); }
-.sr-nav-dot.on { background: #329F96; transform: scale(1.4); }
-
-/* ── SLIDE INNER SHARED ── */
-.sr-inner {
-  padding: 20px 16px 28px;
-  max-width: 540px;
-  width: 100%;
-  margin: 0 auto;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ── COVER SLIDE ── */
-.sr-cover {
-  background: #329F96;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 32px 20px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.sr-cover-eyebrow {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.7);
-}
-.sr-cover-title {
-  font-family: 'Playfair Display', serif;
-  font-size: clamp(32px, 9vw, 48px);
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  word-break: keep-all;
-}
-.sr-cover-title em {
-  font-style: italic;
-  color: #C2EDE9;
-}
-.sr-cover-sub {
-  font-size: 14px;
-  color: rgba(255,255,255,0.9);
-  line-height: 1.6;
-  max-width: 300px;
-}
-.sr-cover-pills {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 4px;
-}
-.sr-cover-pill {
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.25);
-  border-radius: 99px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  white-space: nowrap;
-}
-
-/* ── SECTION LABEL ── */
-.sr-eyebrow {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #329F96;
-}
-.sr-h2 {
-  font-family: 'Playfair Display', serif;
-  font-size: clamp(20px, 5vw, 28px);
-  font-weight: 700;
-  color: #0D3D3A;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-}
-.sr-body {
-  font-size: 14px;
-  line-height: 1.7;
-  color: #2D5C58;
-}
-
-/* ── CHAIN ── */
-.sr-chain {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-  background: #0D3D3A;
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-.sr-chain-item {
-  font-size: 11px;
-  font-weight: 600;
-  color: #C2EDE9;
-  padding: 2px 4px;
-}
-.sr-chain-arrow { font-size: 10px; color: rgba(255,255,255,0.35); }
-
-/* ── MASALAH CARDS ── */
-.sr-masalah-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-@media (max-width: 360px) { .sr-masalah-grid { grid-template-columns: 1fr; } }
-.sr-masalah-card {
-  background: #fff;
-  border: 1px solid #D4EDE9;
-  border-left: 3px solid #329F96;
-  border-radius: 10px;
-  padding: 12px;
-}
-.sr-masalah-icon { font-size: 18px; margin-bottom: 5px; display: block; }
-.sr-masalah-text { font-size: 11px; line-height: 1.55; color: #2D5C58; }
-
-/* ── SOLUSI BAR ── */
-.sr-solusi {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: #0D3D3A;
-  border-radius: 10px;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  flex-wrap: wrap;
-  text-align: center;
-}
-.sr-solusi-badge {
-  background: #329F96;
-  color: #fff;
-  border-radius: 6px;
-  padding: 2px 10px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-/* ── QCDSM ── */
-.sr-qcdsm {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.sr-qcdsm-last { grid-column: 1 / -1; max-width: 180px; margin: 0 auto; width: 100%; }
-.sr-qcdsm-card {
-  background: #fff;
-  border: 1px solid #D4EDE9;
-  border-radius: 10px;
-  padding: 12px 10px;
-  text-align: center;
-}
-.sr-qcdsm-circle {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  background: #329F96;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Playfair Display', serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
-  margin: 0 auto 7px;
-  flex-shrink: 0;
-}
-.sr-qcdsm-label { font-size: 11px; font-weight: 700; color: #0D3D3A; margin-bottom: 3px; }
-.sr-qcdsm-detail { font-size: 10px; color: #5A8A86; line-height: 1.45; }
-
-/* ── PILAR HEADER ── */
-.sr-pilar-hero {
-  background: #329F96;
-  border-radius: 14px;
-  padding: 18px 16px;
-  color: #fff;
-  position: relative;
-  overflow: hidden;
-}
-.sr-pilar-hero::after {
-  content: attr(data-kode);
-  position: absolute;
-  right: -8px; top: -10px;
-  font-family: 'Playfair Display', serif;
-  font-size: 72px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.08);
-  line-height: 1;
-  pointer-events: none;
-  user-select: none;
-}
-.sr-pilar-kode-row {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.75);
-  margin-bottom: 4px;
-}
-.sr-pilar-nama {
-  font-family: 'Playfair Display', serif;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1;
-  margin-bottom: 5px;
-}
-.sr-pilar-tagline { font-size: 13px; color: rgba(255,255,255,0.9); }
-
-/* ── PILAR CONTENT ── */
-.sr-pilar-desc {
-  font-size: 14px;
-  line-height: 1.7;
-  color: #2D5C58;
-}
-.sr-sub-title {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #5A8A86;
-  margin-bottom: 8px;
-}
-.sr-ul {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.sr-ul li {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  font-size: 13px;
-  line-height: 1.55;
-  color: #2D5C58;
-}
-.sr-ul-dot {
-  flex-shrink: 0;
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: #329F96;
-  margin-top: 6px;
-}
-
-/* ── STEPS ── */
-.sr-steps { display: flex; flex-direction: column; gap: 7px; }
-.sr-step {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: #fff;
-  border: 1px solid #D4EDE9;
-  border-radius: 10px;
-  padding: 10px;
-}
-.sr-step-num {
-  flex-shrink: 0;
-  width: 26px; height: 26px;
-  border-radius: 6px;
-  background: #329F96;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-}
-.sr-step-judul { font-size: 12px; font-weight: 600; color: #0D3D3A; margin-bottom: 2px; }
-.sr-step-detail { font-size: 11px; color: #5A8A86; line-height: 1.45; }
-
-/* ── TABLE ── */
-.sr-table-wrap {
-  overflow-x: auto;
-  border: 1px solid #D4EDE9;
-  border-radius: 10px;
-  -webkit-overflow-scrolling: touch;
-}
-.sr-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 11px;
-  min-width: 280px;
-}
-.sr-table th {
-  background: #0D3D3A;
-  color: #C2EDE9;
-  padding: 8px 9px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-align: left;
-  white-space: nowrap;
-}
-.sr-table th:first-child { border-radius: 9px 0 0 0; }
-.sr-table th:last-child { border-radius: 0 9px 0 0; }
-.sr-table td {
-  padding: 8px 9px;
-  border-bottom: 1px solid #E6F3F2;
-  color: #2D5C58;
-  line-height: 1.45;
-  vertical-align: top;
-}
-.sr-table tr:last-child td { border-bottom: none; }
-.sr-table tr:nth-child(odd) td { background: #F7FFFE; }
-
-/* ── FINISH SLIDE ── */
-.sr-finish {
-  background: #0D3D3A;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 32px 20px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.sr-finish-icon {
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: #329F96;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  margin: 0 auto;
-  flex-shrink: 0;
-}
-.sr-finish-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 24px;
-  font-weight: 700;
-  color: #C2EDE9;
-  letter-spacing: -0.01em;
-}
-.sr-finish-sub { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.65; }
-.sr-finish-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: #329F96;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 14px 28px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  transition: all 0.2s;
-  margin-top: 4px;
-  min-height: 48px;
-  width: 100%;
-  max-width: 280px;
-  -webkit-tap-highlight-color: transparent;
-}
-.sr-finish-btn:active:not(:disabled) {
-  background: #2A8A82;
-  transform: translateY(1px);
-}
-.sr-finish-btn:hover:not(:disabled) {
-  background: #2A8A82;
-  transform: translateY(-1px);
-}
-.sr-finish-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
-}
-.sr-finish-hint { font-size: 11px; color: rgba(255,255,255,0.4); }
-
-/* ── CARD WRAP ── */
-.sr-card {
-  background: #fff;
-  border: 1px solid #D4EDE9;
-  border-radius: 12px;
-  padding: 14px;
-}
-.sr-divider { height: 1px; background: #E6F3F2; border: none; }
-
-/* ── SLIDE PILAR TINT ── */
-.sr-slide[data-pilar="S2"] .sr-pilar-hero,
-.sr-slide[data-pilar="S2"] .sr-step-num,
-.sr-slide[data-pilar="S2"] .sr-qcdsm-circle { background: #2A7D76; }
-.sr-slide[data-pilar="S3"] .sr-pilar-hero,
-.sr-slide[data-pilar="S3"] .sr-step-num { background: #1E6B64; }
-.sr-slide[data-pilar="S4"] .sr-pilar-hero,
-.sr-slide[data-pilar="S4"] .sr-step-num { background: #155955; }
-.sr-slide[data-pilar="S5"] .sr-pilar-hero,
-.sr-slide[data-pilar="S5"] .sr-step-num { background: #0D3D3A; }
-
-/* ── MOBILE OPTIMIZATIONS ── */
-@media (max-width: 375px) {
-  .sr-topbar { padding: 0 10px; height: 52px; }
-  .sr-logo { height: 24px; max-width: 70px; }
-  .sr-nav { height: 60px; padding: 0 10px; }
-  .sr-nav-btn { width: 40px; height: 40px; font-size: 18px; }
-  .sr-inner { padding: 16px 14px 24px; gap: 16px; }
-  .sr-pilar-hero { padding: 16px 14px; }
-  .sr-pilar-nama { font-size: 26px; }
-  .sr-step { padding: 9px; gap: 9px; }
-  .sr-step-num { width: 24px; height: 24px; font-size: 9px; }
-  .sr-qcdsm-circle { width: 32px; height: 32px; font-size: 14px; }
-  .sr-scroll-hint { bottom: 76px; font-size: 10px; padding: 7px 14px; }
-}
-
-/* ── SAFE AREA SUPPORT ── */
-@supports (padding: max(0px)) {
-  .sr-wrapper { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
-  .sr-topbar { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
-  .sr-nav { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
-  .sr-inner { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
-}
+// ─── minimal CSS: hanya animasi + scrollbar-hide + ::after pseudo ──────────
+const minimalCss = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes bounceHint {
+    0%, 100% { transform: translateX(-50%) translateY(0px); }
+    50%       { transform: translateX(-50%) translateY(-4px); }
+  }
+  @keyframes arrowBounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(2px); }
+  }
+  .slide-anim { animation: fadeSlideUp 0.3s ease both; }
+  .bounce-hint { animation: bounceHint 2s ease-in-out infinite; }
+  .arrow-bounce { animation: arrowBounce 1.4s ease infinite; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .pilar-hero::after {
+    content: attr(data-kode);
+    position: absolute;
+    right: -6px; top: -8px;
+    font-family: 'Playfair Display', serif;
+    font-size: 80px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.08);
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+  }
+  .font-playfair { font-family: 'Playfair Display', serif; }
+  .font-jakarta  { font-family: 'Plus Jakarta Sans', sans-serif; }
 `
 
 // ─── COMPONENT ───────────────────────────────────────────────────────────────
@@ -791,118 +185,100 @@ const CSS = `
 export default function Materi5R({ employeeName, onSelesai }: Materi5RProps) {
   const [slide, setSlide] = useState(0)
   const [visited, setVisited] = useState<Set<number>>(new Set([0]))
-  const [showScrollHint, setShowScrollHint] = useState(false)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const hintTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [showHint, setShowHint] = useState(false)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Mark slide as visited
+  // mark visited
   useEffect(() => {
     setVisited(prev => new Set([...prev, slide]))
   }, [slide])
 
-  // Reset scroll hint when slide changes
+  // on slide change → scroll to top, maybe show hint
   useEffect(() => {
-    setShowScrollHint(false)
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0
-    }
-    // Show hint after short delay for slides with scrollable content
-    if (slide > 0 && slide < TOTAL_SLIDES - 1) {
-      hintTimeoutRef.current = setTimeout(() => {
-        checkScrollable()
-      }, 800)
-    }
-    return () => {
-      if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current)
-    }
+    setShowHint(false)
+    if (innerRef.current) innerRef.current.scrollTop = 0
+    if (slide === 0 || slide === TOTAL_SLIDES - 1) return
+    if (hintTimer.current) clearTimeout(hintTimer.current)
+    hintTimer.current = setTimeout(() => {
+      const el = innerRef.current
+      if (el && el.scrollHeight > el.clientHeight + 30) setShowHint(true)
+    }, 700)
+    return () => { if (hintTimer.current) clearTimeout(hintTimer.current) }
   }, [slide])
 
-  const checkScrollable = useCallback(() => {
-    const el = scrollContainerRef.current
-    if (!el) return
-    const isScrollable = el.scrollHeight > el.clientHeight + 20
-    const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10
-    setShowScrollHint(isScrollable && !isAtBottom)
-  }, [])
-
   const handleScroll = useCallback(() => {
-    checkScrollable()
-  }, [checkScrollable])
-
-  const goNext = useCallback(() => {
-    setSlide(s => Math.min(s + 1, TOTAL_SLIDES - 1))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    const el = innerRef.current
+    if (el && el.scrollTop + el.clientHeight >= el.scrollHeight - 50) setShowHint(false)
   }, [])
 
-  const goPrev = useCallback(() => {
-    setSlide(s => Math.max(s - 1, 0))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
+  const goNext = useCallback(() => setSlide(s => Math.min(s + 1, TOTAL_SLIDES - 1)), [])
+  const goPrev = useCallback(() => setSlide(s => Math.max(s - 1, 0)), [])
 
   const canFinish = visited.size >= TOTAL_SLIDES - 1
   const progress = Math.round((visited.size / TOTAL_SLIDES) * 100)
+  const isScrollableSlide = slide > 0 && slide < TOTAL_SLIDES - 1
 
-  const LogoBar = () => (
-    <div className="sr-logos">
-      <img src={logoZinus} alt="Zinus" className="sr-logo" loading="eager" />
-      <div className="sr-logo-divider" />
-      <img src={logoHyundai} alt="Hyundai" className="sr-logo" loading="eager" />
-    </div>
-  )
-
-  // ─── SLIDES ───
-
-  const Slide0_Cover = () => (
-    <div className="sr-slide active sr-cover">
-      <div className="sr-cover-eyebrow">Materi Training · 5R</div>
-      <h1 className="sr-cover-title">
-        Mengenal<br /><em>5R</em> di<br />Tempat Kerja
+  // ─── SLIDE 0: Cover ────────────────────────────────────────────────────────
+  const Slide0Cover = () => (
+    <div
+      key={slide}
+      className="slide-anim no-scrollbar flex flex-col items-center justify-center text-center overflow-y-auto flex-1 gap-4 px-5 py-8"
+      style={{ background: '#329F96' }}
+    >
+      <p className="font-jakarta text-[10px] font-bold tracking-[0.18em] uppercase text-white/70">
+        Materi Training · 5R
+      </p>
+      <h1 className="font-playfair text-[clamp(32px,9vw,48px)] font-bold text-white leading-[1.1] tracking-tight">
+        Mengenal<br />
+        <em className="italic" style={{ color: '#C2EDE9' }}>5R</em> di<br />
+        Tempat Kerja
       </h1>
-      <p className="sr-cover-sub">
+      <p className="font-jakarta text-sm text-white/90 leading-relaxed max-w-[300px]">
         {employeeName
           ? `Halo, ${employeeName}! Baca seluruh materi ini sebelum mengerjakan post-test.`
           : 'Pelajari metode 5R untuk tempat kerja yang efisien, aman, dan nyaman.'}
       </p>
-      <div className="sr-cover-pills">
+      <div className="flex flex-wrap justify-center gap-1.5 mt-1">
         {PILAR.map(p => (
-          <span key={p.kode} className="sr-cover-pill">{p.kode} · {p.nama}</span>
+          <span
+            key={p.kode}
+            className="font-jakarta text-xs font-semibold text-white px-3 py-1 rounded-full"
+            style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)' }}
+          >
+            {p.kode} · {p.nama}
+          </span>
         ))}
       </div>
     </div>
   )
 
-  const Slide1_Pendahuluan = () => (
-    <div className="sr-slide active">
-      <div className="sr-inner" ref={scrollContainerRef} onScroll={handleScroll}>
+  // ─── SLIDE 1: Pendahuluan ──────────────────────────────────────────────────
+  const Slide1Pendahuluan = () => (
+    <div key={slide} className="slide-anim flex flex-col flex-1 overflow-hidden">
+      <div ref={innerRef} onScroll={handleScroll} className="no-scrollbar flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-4 max-w-[540px] w-full mx-auto">
         <div>
-          <p className="sr-eyebrow">Pendahuluan</p>
-          <h2 className="sr-h2">Mengapa 5R Penting?</h2>
+          <p className="font-jakarta text-[10px] font-bold tracking-[0.16em] uppercase mb-1" style={{ color: '#329F96' }}>Pendahuluan</p>
+          <h2 className="font-playfair text-[clamp(20px,5vw,28px)] font-bold leading-tight" style={{ color: '#0D3D3A' }}>Mengapa 5R Penting?</h2>
         </div>
-        <p className="sr-body">
+        <p className="font-jakarta text-sm leading-relaxed" style={{ color: '#2D5C58' }}>
           5R adalah metode pengelolaan tempat kerja yang melibatkan <strong>semua orang</strong> di area kerja.
-          5R menjadi dasar penting dalam melakukan aktivitas perbaikan lainnya dan menciptakan budaya kerja
-          dalam memelihara tempat kerja. Tujuan akhirnya adalah menciptakan <strong>budaya disiplin</strong>
-          melalui rantai perubahan:
+          5R menjadi dasar penting dalam aktivitas perbaikan dan menciptakan <strong>budaya disiplin</strong> melalui rantai perubahan:
         </p>
-        <div className="sr-chain">
-          {['Tempat Kerja', '→', 'Perilaku', '→', 'Kebiasaan', '→', 'Sikap', '→', 'Budaya'].map((t, i) => (
-            <span key={i} className={t === '→' ? 'sr-chain-arrow' : 'sr-chain-item'}>{t}</span>
+        <div className="flex flex-wrap gap-1 items-center rounded-xl px-3 py-2.5" style={{ background: '#0D3D3A' }}>
+          {['Tempat Kerja','→','Perilaku','→','Kebiasaan','→','Sikap','→','Budaya'].map((t, i) => (
+            <span key={i} className={`font-jakarta text-[11px] px-1 py-0.5 ${t==='→' ? 'text-white/35' : 'font-semibold'}`} style={t!=='→' ? { color: '#C2EDE9' } : {}}>
+              {t}
+            </span>
           ))}
         </div>
-        <div className="sr-card" style={{ textAlign: 'center', padding: '18px 14px' }}>
-          <p style={{ fontSize: 12, color: '#5A8A86', marginBottom: 8 }}>5R terdiri dari 5 Pilar</p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <div className="bg-white rounded-xl border p-4 text-center" style={{ borderColor: '#D4EDE9' }}>
+          <p className="font-jakarta text-xs mb-2" style={{ color: '#5A8A86' }}>5R terdiri dari 5 Pilar</p>
+          <div className="flex flex-wrap justify-center gap-1.5">
             {PILAR.map((p, i) => (
-              <div key={p.kode} style={{
-                background: `rgba(50,159,150,${0.12 + i * 0.12})`,
-                borderRadius: 8,
-                padding: '5px 10px',
-                fontSize: 12,
-                fontWeight: 700,
-                color: '#0D3D3A',
-              }}>
+              <span key={p.kode} className="font-jakarta text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: `rgba(50,159,150,${0.12 + i * 0.12})`, color: '#0D3D3A' }}>
                 {p.kode} {p.nama}
-              </div>
+              </span>
             ))}
           </div>
         </div>
@@ -910,97 +286,124 @@ export default function Materi5R({ employeeName, onSelesai }: Materi5RProps) {
     </div>
   )
 
-  const Slide2_Masalah = () => (
-    <div className="sr-slide active">
-      <div className="sr-inner" ref={scrollContainerRef} onScroll={handleScroll}>
+  // ─── SLIDE 2: Masalah ──────────────────────────────────────────────────────
+  const Slide2Masalah = () => (
+    <div key={slide} className="slide-anim flex flex-col flex-1 overflow-hidden">
+      <div ref={innerRef} onScroll={handleScroll} className="no-scrollbar flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-4 max-w-[540px] w-full mx-auto">
         <div>
-          <p className="sr-eyebrow">Tanpa 5R</p>
-          <h2 className="sr-h2">Masalah yang Terjadi</h2>
+          <p className="font-jakarta text-[10px] font-bold tracking-[0.16em] uppercase mb-1" style={{ color: '#329F96' }}>Tanpa 5R</p>
+          <h2 className="font-playfair text-[clamp(20px,5vw,28px)] font-bold leading-tight" style={{ color: '#0D3D3A' }}>Masalah yang Terjadi</h2>
         </div>
-        <div className="sr-masalah-grid">
+        <div className="grid grid-cols-2 gap-2.5">
           {MASALAH.map((m, i) => (
-            <div className="sr-masalah-card" key={i}>
-              <span className="sr-masalah-icon">{m.icon}</span>
-              <p className="sr-masalah-text">{m.teks}</p>
+            <div key={i} className="bg-white rounded-xl p-3" style={{ border: '1px solid #D4EDE9', borderLeft: '3px solid #329F96' }}>
+              <span className="text-lg mb-1.5 block">{m.icon}</span>
+              <p className="font-jakarta text-[11px] leading-relaxed" style={{ color: '#2D5C58' }}>{m.teks}</p>
             </div>
           ))}
         </div>
-        <div className="sr-solusi">
+        <div className="flex items-center justify-center gap-2 flex-wrap rounded-xl px-4 py-3 text-white font-jakarta text-xs font-semibold" style={{ background: '#0D3D3A' }}>
           <span>Semua masalah ini dapat diselesaikan dengan</span>
-          <span className="sr-solusi-badge">5R</span>
+          <span className="px-2.5 py-0.5 rounded-md text-xs font-bold text-white" style={{ background: '#329F96' }}>5R</span>
         </div>
       </div>
     </div>
   )
 
-  const Slide3_Manfaat = () => (
-    <div className="sr-slide active">
-      <div className="sr-inner" ref={scrollContainerRef} onScroll={handleScroll}>
+  // ─── SLIDE 3: Manfaat ─────────────────────────────────────────────────────
+  const Slide3Manfaat = () => (
+    <div key={slide} className="slide-anim flex flex-col flex-1 overflow-hidden">
+      <div ref={innerRef} onScroll={handleScroll} className="no-scrollbar flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-4 max-w-[540px] w-full mx-auto">
         <div>
-          <p className="sr-eyebrow">Manfaat Penerapan</p>
-          <h2 className="sr-h2">Dampak 5R pada Kinerja</h2>
+          <p className="font-jakarta text-[10px] font-bold tracking-[0.16em] uppercase mb-1" style={{ color: '#329F96' }}>Manfaat Penerapan</p>
+          <h2 className="font-playfair text-[clamp(20px,5vw,28px)] font-bold leading-tight" style={{ color: '#0D3D3A' }}>Dampak 5R pada Kinerja</h2>
         </div>
-        <div className="sr-qcdsm">
+        <div className="grid grid-cols-2 gap-2.5">
           {MANFAAT.map((m, i) => (
-            <div key={m.kode} className={`sr-qcdsm-card${i === 4 ? ' sr-qcdsm-last' : ''}`}>
-              <div className="sr-qcdsm-circle">{m.kode}</div>
-              <div className="sr-qcdsm-label">{m.label}</div>
-              <div className="sr-qcdsm-detail">{m.detail}</div>
+            <div
+              key={m.kode}
+              className={`bg-white rounded-xl p-3 text-center${i === 4 ? ' col-span-2 max-w-[180px] mx-auto w-full' : ''}`}
+              style={{ border: '1px solid #D4EDE9' }}
+            >
+              <div className="w-9 h-9 rounded-full flex items-center justify-center font-playfair text-base font-bold text-white mx-auto mb-2" style={{ background: '#329F96' }}>
+                {m.kode}
+              </div>
+              <div className="font-jakarta text-[11px] font-bold mb-1" style={{ color: '#0D3D3A' }}>{m.label}</div>
+              <div className="font-jakarta text-[10px] leading-relaxed" style={{ color: '#5A8A86' }}>{m.detail}</div>
             </div>
           ))}
         </div>
-        <p className="sr-body" style={{ textAlign: 'center', fontSize: 13 }}>
+        <p className="font-jakarta text-xs text-center leading-relaxed" style={{ color: '#2D5C58' }}>
           Penerapan 5R yang konsisten menghasilkan lingkungan kerja yang lebih aman, efisien, dan produktif.
         </p>
       </div>
     </div>
   )
 
+  // ─── SLIDE 4–8: Pilar ─────────────────────────────────────────────────────
   const SlidePilar = ({ pilar, idx }: { pilar: typeof PILAR[0]; idx: number }) => (
-    <div className="sr-slide active" data-pilar={pilar.kode}>
-      <div className="sr-inner" ref={scrollContainerRef} onScroll={handleScroll}>
-        {/* Hero header */}
-        <div className="sr-pilar-hero" data-kode={pilar.kode} style={{ background: pilar.warna }}>
-          <div className="sr-pilar-kode-row">{pilar.kode} · {pilar.jepang} · Pilar {idx + 1} dari 5</div>
-          <div className="sr-pilar-nama">{pilar.nama}</div>
-          <div className="sr-pilar-tagline">{pilar.tagline}</div>
+    <div key={`${slide}-${pilar.kode}`} className="slide-anim flex flex-col flex-1 overflow-hidden">
+      <div ref={innerRef} onScroll={handleScroll} className="no-scrollbar flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-4 max-w-[540px] w-full mx-auto">
+
+        {/* ── PILAR HERO — nama besar dengan background warna + ghost kode ── */}
+        <div
+          className="pilar-hero relative rounded-2xl overflow-hidden px-4 py-5 text-white"
+          data-kode={pilar.kode}
+          style={{ background: pilar.warna }}
+        >
+          <p className="font-jakarta text-[10px] font-bold tracking-[0.14em] uppercase text-white/75 mb-1">
+            {pilar.kode} · {pilar.jepang} · Pilar {idx + 1} dari 5
+          </p>
+          <p className="font-playfair text-[32px] font-bold leading-none mb-1.5">{pilar.nama}</p>
+          <p className="font-jakarta text-[13px] text-white/90">{pilar.tagline}</p>
         </div>
 
         {/* Deskripsi */}
-        <p className="sr-pilar-desc">{pilar.deskripsi}</p>
+        <p className="font-jakarta text-sm leading-relaxed" style={{ color: '#2D5C58' }}>{pilar.deskripsi}</p>
 
-        <hr className="sr-divider" />
+        <div className="h-px" style={{ background: '#E6F3F2' }} />
 
         {/* Tujuan */}
         <div>
-          <p className="sr-sub-title">Tujuan</p>
-          <ul className="sr-ul">
+          <p className="font-jakarta text-[10px] font-bold tracking-[0.14em] uppercase mb-2" style={{ color: '#5A8A86' }}>Tujuan</p>
+          <ul className="flex flex-col gap-2">
             {pilar.tujuan.map((t, i) => (
-              <li key={i}><span className="sr-ul-dot" style={{ background: pilar.warna }} />{t}</li>
+              <li key={i} className="flex items-start gap-2">
+                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-[6px]" style={{ background: pilar.warna }} />
+                <span className="font-jakarta text-[13px] leading-relaxed" style={{ color: '#2D5C58' }}>{t}</span>
+              </li>
             ))}
           </ul>
         </div>
 
         {/* Manfaat */}
         <div>
-          <p className="sr-sub-title">Manfaat</p>
-          <ul className="sr-ul">
+          <p className="font-jakarta text-[10px] font-bold tracking-[0.14em] uppercase mb-2" style={{ color: '#5A8A86' }}>Manfaat</p>
+          <ul className="flex flex-col gap-2">
             {pilar.manfaat.map((m, i) => (
-              <li key={i}><span className="sr-ul-dot" style={{ background: pilar.warna }} />{m}</li>
+              <li key={i} className="flex items-start gap-2">
+                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-[6px]" style={{ background: pilar.warna }} />
+                <span className="font-jakarta text-[13px] leading-relaxed" style={{ color: '#2D5C58' }}>{m}</span>
+              </li>
             ))}
           </ul>
         </div>
 
         {/* Aktivitas */}
         <div>
-          <p className="sr-sub-title">Langkah Aktivitas</p>
-          <div className="sr-steps">
+          <p className="font-jakarta text-[10px] font-bold tracking-[0.14em] uppercase mb-2" style={{ color: '#5A8A86' }}>Langkah Aktivitas</p>
+          <div className="flex flex-col gap-2">
             {pilar.aktivitas.map(a => (
-              <div className="sr-step" key={a.step}>
-                <div className="sr-step-num" style={{ background: pilar.warna }}>{a.step}</div>
+              <div key={a.step} className="flex items-start gap-2.5 bg-white rounded-xl p-2.5" style={{ border: '1px solid #D4EDE9' }}>
+                <div
+                  className="flex-shrink-0 w-[26px] h-[26px] rounded-lg flex items-center justify-center font-jakarta text-[10px] font-bold text-white"
+                  style={{ background: pilar.warna }}
+                >
+                  {a.step}
+                </div>
                 <div>
-                  <div className="sr-step-judul">{a.judul}</div>
-                  <div className="sr-step-detail">{a.detail}</div>
+                  <p className="font-jakarta text-xs font-semibold mb-0.5" style={{ color: '#0D3D3A' }}>{a.judul}</p>
+                  <p className="font-jakarta text-[11px] leading-relaxed" style={{ color: '#5A8A86' }}>{a.detail}</p>
                 </div>
               </div>
             ))}
@@ -1010,22 +413,31 @@ export default function Materi5R({ employeeName, onSelesai }: Materi5RProps) {
         {/* Tabel */}
         {pilar.tabel.length > 0 && (
           <div>
-            <p className="sr-sub-title">Panduan Pelaksanaan</p>
-            <div className="sr-table-wrap">
-              <table className="sr-table">
+            <p className="font-jakarta text-[10px] font-bold tracking-[0.14em] uppercase mb-2" style={{ color: '#5A8A86' }}>Panduan Pelaksanaan</p>
+            <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid #D4EDE9' }}>
+              <table className="w-full border-collapse text-[11px]" style={{ minWidth: 280 }}>
                 <thead>
                   <tr>
-                    <th>Kategori</th>
-                    <th>Kondisi</th>
-                    <th>Tindakan</th>
+                    {['Kategori','Kondisi','Tindakan'].map((h, i) => (
+                      <th
+                        key={h}
+                        className="font-jakarta text-[9px] font-bold tracking-[0.08em] uppercase text-left px-2 py-2"
+                        style={{
+                          background: '#0D3D3A', color: '#C2EDE9',
+                          borderRadius: i === 0 ? '9px 0 0 0' : i === 2 ? '0 9px 0 0' : undefined,
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {pilar.tabel.map((row, i) => (
                     <tr key={i}>
-                      <td><strong>{row.frek}</strong></td>
-                      <td>{row.contoh}</td>
-                      <td>{row.aksi}</td>
+                      <td className="font-jakarta px-2 py-2 font-semibold" style={{ color: '#2D5C58', background: i % 2 === 0 ? '#F7FFFE' : undefined, borderBottom: i < pilar.tabel.length-1 ? '1px solid #E6F3F2' : undefined }}>{row.frek}</td>
+                      <td className="font-jakarta px-2 py-2" style={{ color: '#2D5C58', background: i % 2 === 0 ? '#F7FFFE' : undefined, borderBottom: i < pilar.tabel.length-1 ? '1px solid #E6F3F2' : undefined }}>{row.contoh}</td>
+                      <td className="font-jakarta px-2 py-2" style={{ color: '#2D5C58', background: i % 2 === 0 ? '#F7FFFE' : undefined, borderBottom: i < pilar.tabel.length-1 ? '1px solid #E6F3F2' : undefined }}>{row.aksi}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1037,96 +449,164 @@ export default function Materi5R({ employeeName, onSelesai }: Materi5RProps) {
     </div>
   )
 
-  const Slide9_Finish = () => (
-    <div className="sr-slide active sr-finish">
-      <div className="sr-finish-icon">✓</div>
-      <h2 className="sr-finish-title">Materi Selesai!</h2>
-      <p className="sr-finish-sub">
+  // ─── SLIDE 9: Finish ──────────────────────────────────────────────────────
+  const Slide9Finish = () => (
+    <div
+      key={slide}
+      className="slide-anim no-scrollbar flex flex-col flex-1 items-center justify-center text-center overflow-y-auto px-5 py-8 gap-4"
+      style={{ background: '#0D3D3A' }}
+    >
+      <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl flex-shrink-0" style={{ background: '#329F96' }}>✓</div>
+      <h2 className="font-playfair text-2xl font-bold" style={{ color: '#C2EDE9' }}>Materi Selesai!</h2>
+      <p className="font-jakarta text-[13px] leading-relaxed max-w-[280px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
         {canFinish
           ? 'Kamu sudah membaca semua materi 5R. Saatnya kerjakan Post-Test!'
           : `Kamu sudah membaca ${progress}% materi. Pastikan semua slide sudah dibuka sebelum melanjutkan.`}
       </p>
-      <button className="sr-finish-btn" onClick={onSelesai} disabled={!canFinish}>
+      <button
+        onClick={onSelesai}
+        disabled={!canFinish}
+        className="font-jakarta font-bold text-sm text-white rounded-xl px-7 py-4 w-full max-w-[280px] mt-1 transition-all"
+        style={{
+          background: canFinish ? '#329F96' : 'rgba(50,159,150,0.4)',
+          cursor: canFinish ? 'pointer' : 'not-allowed',
+        }}
+      >
         Lanjut ke Post-Test →
       </button>
       {!canFinish && (
-        <p className="sr-finish-hint">
+        <p className="font-jakarta text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
           Kembali dan buka semua slide terlebih dahulu ({visited.size}/{TOTAL_SLIDES} slide terbuka)
         </p>
       )}
     </div>
   )
 
-  const SLIDE_COMPONENTS: React.ReactNode[] = [
-    <Slide0_Cover key={0} />,
-    <Slide1_Pendahuluan key={1} />,
-    <Slide2_Masalah key={2} />,
-    <Slide3_Manfaat key={3} />,
+  // ─── SLIDE REGISTRY ──────────────────────────────────────────────────────
+  const slides: React.ReactNode[] = [
+    <Slide0Cover key="cover" />,
+    <Slide1Pendahuluan key="pendahuluan" />,
+    <Slide2Masalah key="masalah" />,
+    <Slide3Manfaat key="manfaat" />,
     ...PILAR.map((p, i) => <SlidePilar key={p.kode} pilar={p} idx={i} />),
-    <Slide9_Finish key={9} />,
+    <Slide9Finish key="finish" />,
   ]
 
+  // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
     <>
-      <style>{CSS}</style>
-      <div className="sr-wrapper">
+      <style>{minimalCss}</style>
+      <div className="font-jakarta flex flex-col min-h-screen" style={{ background: '#F0FAF9' }}>
 
-        {/* Top Bar */}
-        <div className="sr-topbar">
-          <LogoBar />
-          <div className="sr-progress-wrap">
-            <div className="sr-progress-track">
-              <div className="sr-progress-fill" style={{ width: `${progress}%` }} />
+        {/* ── TOP BAR ── */}
+        <div
+          className="sticky top-0 z-50 flex items-center justify-between gap-2 bg-white px-3 h-14"
+          style={{ borderBottom: '1px solid #D4EDE9' }}
+        >
+          {/* Logos */}
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            <img src={logoZinus} alt="Zinus" className="h-7 w-auto object-contain max-w-[80px]" loading="eager" />
+            <div className="w-px h-5 flex-shrink-0" style={{ background: '#D4EDE9' }} />
+            <img src={logoHyundai} alt="Hyundai" className="h-7 w-auto object-contain max-w-[80px]" loading="eager" />
+          </div>
+          {/* Progress */}
+          <div className="flex-1 min-w-0 max-w-[120px]">
+            <div className="h-1 rounded-full overflow-hidden" style={{ background: '#D4EDE9' }}>
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{ width: `${progress}%`, background: '#329F96' }}
+              />
             </div>
-            <div className="sr-progress-label">{progress}% terbaca</div>
+            <p className="font-jakarta text-[10px] font-semibold text-right mt-0.5 tracking-wide whitespace-nowrap" style={{ color: '#329F96' }}>
+              {progress}% terbaca
+            </p>
           </div>
         </div>
 
-        {/* Slides */}
-        <div className="sr-slides">
-          {SLIDE_COMPONENTS[slide]}
+        {/* ── SLIDE AREA ── */}
+        <div className="flex-1 relative overflow-hidden" style={{ height: 'calc(100dvh - 56px - 68px)' }}>
+          {slides[slide]}
+
+          {/* Scroll hint popup */}
+          {isScrollableSlide && (
+            <div
+              className={`bounce-hint absolute left-1/2 z-50 flex items-center gap-2 rounded-full px-3.5 py-2 text-white font-jakarta text-[11px] font-semibold pointer-events-none transition-all duration-300 ${showHint ? 'opacity-100' : 'opacity-0'}`}
+              style={{
+                bottom: 12,
+                transform: 'translateX(-50%)',
+                background: 'rgba(13,61,58,0.92)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.18)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {/* Arrow circle */}
+              <span
+                className="arrow-bounce w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: '#329F96' }}
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="2,3 5,7 8,3" />
+                </svg>
+              </span>
+              Gulir ke bawah
+            </div>
+          )}
         </div>
 
-        {/* Scroll Hint Indicator */}
-        {showScrollHint && slide > 0 && slide < TOTAL_SLIDES - 1 && (
-          <div className="sr-scroll-hint">Gulir ke bawah</div>
-        )}
-
-        {/* Bottom Nav */}
-        <div className="sr-nav">
+        {/* ── BOTTOM NAV ── */}
+        <div
+          className="sticky bottom-0 z-50 flex items-center justify-between gap-2 bg-white px-4"
+          style={{ borderTop: '1px solid #D4EDE9', height: 68, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          {/* PREV — solid teal circle */}
           <button
-            className="sr-nav-btn"
             onClick={goPrev}
             disabled={slide === 0}
             aria-label="Slide sebelumnya"
+            className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95"
+            style={{
+              background: slide === 0 ? '#C8E6E4' : '#329F96',
+              boxShadow: slide === 0 ? 'none' : '0 2px 8px rgba(50,159,150,0.35)',
+            }}
           >
-            &lt;
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="11,4 6,9 11,14" />
+            </svg>
           </button>
 
-          <div className="sr-nav-dots" role="tablist" aria-label="Navigasi slide">
+          {/* Dots */}
+          <div className="flex-1 flex items-center justify-center gap-1.5 overflow-x-auto no-scrollbar px-1" role="tablist">
             {Array.from({ length: TOTAL_SLIDES }).map((_, i) => (
               <button
                 key={i}
-                className={`sr-nav-dot${slide === i ? ' on' : ''}`}
-                style={visited.has(i) && slide !== i ? { background: '#9CCEC9' } : {}}
-                onClick={() => {
-                  setSlide(i)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                aria-label={`Slide ${i + 1}`}
                 role="tab"
                 aria-selected={slide === i}
+                aria-label={`Slide ${i + 1}`}
+                onClick={() => setSlide(i)}
+                className="flex-shrink-0 w-2 h-2 rounded-full border-0 p-0 cursor-pointer transition-all duration-200"
+                style={{
+                  background: slide === i ? '#329F96' : visited.has(i) ? '#9CCEC9' : '#C8E6E4',
+                  transform: slide === i ? 'scale(1.5)' : 'scale(1)',
+                  minWidth: 8,
+                }}
               />
             ))}
           </div>
 
+          {/* NEXT — solid teal circle */}
           <button
-            className="sr-nav-btn"
             onClick={goNext}
             disabled={slide === TOTAL_SLIDES - 1}
             aria-label="Slide berikutnya"
+            className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95"
+            style={{
+              background: slide === TOTAL_SLIDES - 1 ? '#C8E6E4' : '#329F96',
+              boxShadow: slide === TOTAL_SLIDES - 1 ? 'none' : '0 2px 8px rgba(50,159,150,0.35)',
+            }}
           >
-            &gt;
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="7,4 12,9 7,14" />
+            </svg>
           </button>
         </div>
 

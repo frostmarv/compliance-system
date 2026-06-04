@@ -700,7 +700,10 @@ export default function HomePage() {
               <img src={zinusLogo} alt="Zinus" />
             </div>
             <p style={{ fontSize: 12, color: '#99bfbd' }}>
-              © {new Date().getFullYear()} Compliance - Zinus Indonesia
+              © {new Date().getFullYear()} Compliance - Zinus Indonesia.
+            </p>
+            <p style={{ fontSize: 11, color: '#b5d2d0', marginTop: 4 }}>
+              Developed by Nurmalik Wijaya
             </p>
           </div>
         </footer>

@@ -209,7 +209,8 @@ export default function LoginPage() {
 
         {/* ── Bottom label ──────────────────────────────────────────── */}
         <p className="text-white/40 text-xs text-center mt-4 tracking-wide">
-          © {new Date().getFullYear()} Zinus Compliance . Internal Use Only
+          © {new Date().getFullYear()} Compliance - Zinus Indonesia. All rights
+          reserved.
         </p>
       </div>
     </div>

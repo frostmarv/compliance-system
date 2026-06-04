@@ -15,6 +15,8 @@ export const Footer = ({ year = new Date().getFullYear(), companyName = 'Complia
     </div>
     <div className="footer-copy">
       © {year} {companyName} · All rights reserved
+      <br />
+      Developed by Nurmalik Wijaya
     </div>
   </footer>
 )

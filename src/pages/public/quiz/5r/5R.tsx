@@ -48,7 +48,7 @@ export default function FiveRQuiz() {
   const [showErrorModal, setShowErrorModal]   = useState(false)
   const [showResultModal, setShowResultModal] = useState(false)
 
-  const [quizSchedule, setQuizSchedule]     = useState<QuizSchedule | null>(null)
+  const [quizSchedule, setQuizSchedule]       = useState<QuizSchedule | null>(null)
   const [scheduleLoading, setScheduleLoading] = useState(true)
 
   useEffect(() => {
@@ -176,8 +176,8 @@ export default function FiveRQuiz() {
 
       if (preTestRecord) {
         // Pre-test sudah selesai → BYPASS KE MATERI
-        const score = Number(preTestRecord.score || 0)
-        const total = Number(preTestRecord.total_questions || 0)
+        const score   = Number(preTestRecord.score || 0)
+        const total   = Number(preTestRecord.total_questions || 0)
         const correct = Number(preTestRecord.correct_count || 0)
 
         setPreResult({
@@ -198,7 +198,7 @@ export default function FiveRQuiz() {
         setPreQuestions(preQ)
         setPhase('pretest')
       }
-      
+
       window.scrollTo({ top: 0, behavior: 'smooth' })
 
     } catch (err: any) {
@@ -241,20 +241,20 @@ export default function FiveRQuiz() {
       if (!training?.id) throw new Error('Training tidak ditemukan')
 
       const { data, error: rpcError } = await supabase.rpc('calculate_and_save_score', {
-        p_nik: employee!.nik,
-        p_training_id: training.id,
+        p_nik:          employee!.nik,
+        p_training_id:  training.id,
         p_user_answers: preAnswers,
-        p_test_type: 'pre',
+        p_test_type:    'pre',
       })
 
       if (rpcError) throw rpcError
       if (data?.error) throw new Error(data.error)
 
       setPreResult({
-        score: Number(data.score || 0),
-        total: Number(data.total || 0),
+        score:   Number(data.score   || 0),
+        total:   Number(data.total   || 0),
         correct: Number(data.correct || 0),
-        success: Number(data.score || 0) >= 80,
+        success: Number(data.score   || 0) >= 80,
       } as ScoreResult)
 
       const postQ = await loadQuestions(employee!.factory, 'post')
@@ -292,22 +292,22 @@ export default function FiveRQuiz() {
       if (!training?.id) throw new Error('Training tidak ditemukan')
 
       const { data, error: rpcError } = await supabase.rpc('calculate_and_save_score', {
-        p_nik: employee!.nik,
-        p_training_id: training.id,
+        p_nik:          employee!.nik,
+        p_training_id:  training.id,
         p_user_answers: postAnswers,
-        p_test_type: 'post',
+        p_test_type:    'post',
       })
 
       if (rpcError) throw rpcError
       if (data?.error) throw new Error(data.error)
 
       setResult({
-        score: Number(data.score || 0),
-        total: Number(data.total || 0),
+        score:   Number(data.score   || 0),
+        total:   Number(data.total   || 0),
         correct: Number(data.correct || 0),
-        success: Number(data.score || 0) >= 80,
+        success: Number(data.score   || 0) >= 80,
       } as ScoreResult)
-      
+
       setShowResultModal(true)
 
     } catch (err: any) {
@@ -451,63 +451,67 @@ export default function FiveRQuiz() {
   )
 }
 
+// ── Phase Indicator ───────────────────────────────────────────────────────────
+
 const PHASES = [
   { key: 'pretest',  label: 'Pre-Test' },
   { key: 'materi',   label: 'Materi'   },
-  { key: 'posttest', label: 'Post-Test'},
+  { key: 'posttest', label: 'Post-Test' },
 ]
 
 function PhaseIndicator({ current }: { current: 'pretest' | 'materi' | 'posttest' }) {
   const currentIdx = PHASES.findIndex(p => p.key === current)
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 0,
-      background: '#F7F4EF',
-      border: '1px solid #E8E0D5',
-      borderRadius: 12,
-      padding: '12px 16px',
-      marginBottom: 4,
-    }}>
+    <div className="flex items-center bg-[#F7F4EF] border border-[#E8E0D5] rounded-xl px-4 py-3 mb-1">
       {PHASES.map((p, i) => {
-        const isDone    = i < currentIdx
-        const isActive  = i === currentIdx
-        const isLast    = i === PHASES.length - 1
+        const isDone   = i < currentIdx
+        const isActive = i === currentIdx
+        const isLast   = i === PHASES.length - 1
 
         return (
-          <div key={p.key} style={{ display: 'flex', alignItems: 'center', flex: isLast ? 0 : 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{
-                width: 26, height: 26,
-                borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 700,
-                background: isDone ? '#059669' : isActive ? '#E85D26' : '#E8E0D5',
-                color: isDone || isActive ? 'white' : '#9C8D7E',
-                flexShrink: 0,
-                transition: 'all 0.3s',
-              }}>
+          <div
+            key={p.key}
+            className={`flex items-center ${isLast ? '' : 'flex-1'}`}
+          >
+            {/* Step bubble + label */}
+            <div className="flex items-center gap-1.5">
+              <div
+                className={[
+                  'w-[26px] h-[26px] rounded-full flex items-center justify-center',
+                  'text-xs font-bold shrink-0 transition-all duration-300',
+                  isDone
+                    ? 'bg-emerald-600 text-white'
+                    : isActive
+                    ? 'bg-[#E85D26] text-white'
+                    : 'bg-[#E8E0D5] text-[#9C8D7E]',
+                ].join(' ')}
+              >
                 {isDone ? '✓' : i + 1}
               </div>
-              <span style={{
-                fontSize: 12,
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? '#1C1917' : isDone ? '#059669' : '#9C8D7E',
-                whiteSpace: 'nowrap',
-              }}>
+
+              <span
+                className={[
+                  'text-xs whitespace-nowrap',
+                  isActive
+                    ? 'font-semibold text-[#1C1917]'
+                    : isDone
+                    ? 'font-normal text-emerald-600'
+                    : 'font-normal text-[#9C8D7E]',
+                ].join(' ')}
+              >
                 {p.label}
               </span>
             </div>
 
+            {/* Connector line */}
             {!isLast && (
-              <div style={{
-                flex: 1, height: 2,
-                background: isDone ? '#059669' : '#E8E0D5',
-                margin: '0 8px',
-                transition: 'background 0.3s',
-              }} />
+              <div
+                className={[
+                  'flex-1 h-0.5 mx-2 transition-colors duration-300',
+                  isDone ? 'bg-emerald-600' : 'bg-[#E8E0D5]',
+                ].join(' ')}
+              />
             )}
           </div>
         )
