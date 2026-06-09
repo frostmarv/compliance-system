@@ -35,6 +35,31 @@ export async function generatePdf(hasilId: string) {
   return res.json() as Promise<{ status: "created" | "already_exists"; pdf_id: string }>
 }
 
+// ── View PDF — buka di tab baru ───────────────────────────────────────────
+export async function viewPdf(pdfId: string) {
+  const authHeader = await getAuthHeader()
+
+  const res = await fetch(`${EDGE_BASE}/view-pdf`, {
+    method: "POST",
+    headers: { ...authHeader, "Content-Type": "application/json" },
+    body: JSON.stringify({ pdf_id: pdfId }),
+  })
+
+  if (!res.ok) {
+    const msg = await parseError(res)
+    throw new Error(msg)
+  }
+
+  const blob = await res.blob()
+  const url  = URL.createObjectURL(blob)
+  const tab  = window.open(url, "_blank")
+
+  // Cleanup blob URL setelah tab dibuka
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+
+  if (!tab) throw new Error("Popup diblokir browser — izinkan popup untuk situs ini")
+}
+
 // ── Download ZIP per training ─────────────────────────────────────────────
 export async function downloadZip(filter: {
   year: number
@@ -62,70 +87,5 @@ export async function downloadZip(filter: {
   a.href     = url
   a.download = `${filter.training_type ?? "training"}_${filter.year}_S${filter.semester}.zip`
   a.click()
-  URL.revokeObjectURL(url)
-}
-
-// ── List PDF — untuk tabel di halaman admin ───────────────────────────────
-export async function listPdfs(filter: {
-  year?: number
-  semester?: number
-  training_type?: string
-  factory?: string
-  department?: string
-  nik?: string
-}) {
-  const authHeader = await getAuthHeader()
-
-  const res = await fetch(`${EDGE_BASE}/list-pdfs`, {
-    method: "POST",
-    headers: { ...authHeader, "Content-Type": "application/json" },
-    body: JSON.stringify(filter),
-  })
-
-  if (!res.ok) {
-    const msg = await parseError(res)
-    throw new Error(msg)
-  }
-
-  return res.json() as Promise<{
-    id: string
-    training_name: string
-    nik: string
-    employee_name: string
-    department: string
-    factory: string
-    score: number
-    passed: boolean
-    generated_at: string
-  }[]>
-}
-
-// ── View / download PDF satuan ────────────────────────────────────────────
-export async function openPdf(pdfId: string, mode: "view" | "download" = "view") {
-  const authHeader = await getAuthHeader()
-
-  const res = await fetch(`${EDGE_BASE}/get-pdf`, {
-    method: "POST",
-    headers: { ...authHeader, "Content-Type": "application/json" },
-    body: JSON.stringify({ pdf_id: pdfId, mode }),
-  })
-
-  if (!res.ok) {
-    const msg = await parseError(res)
-    throw new Error(msg)
-  }
-
-  const blob = await res.blob()
-  const url  = URL.createObjectURL(blob)
-
-  if (mode === "view") {
-    window.open(url, "_blank")
-  } else {
-    const a    = document.createElement("a")
-    a.href     = url
-    a.download = `result_${pdfId}.pdf`
-    a.click()
-  }
-
   URL.revokeObjectURL(url)
 }

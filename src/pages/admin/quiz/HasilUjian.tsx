@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { generatePdf, downloadZip } from '@/services/pdfService'
+import { generatePdf, viewPdf, downloadZip } from '@/services/pdfService'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface TrainingType {
@@ -20,6 +20,7 @@ interface QuizResult {
   user_answers: Record<string, string>
   submitted_at: string
   test_type: 'pre' | 'post'
+  pdf_id: string | null          // ← tambah
   karyawan?: {
     nama: string
     department: string | null
@@ -32,17 +33,15 @@ interface QuizResult {
   factory: number | null
 }
 
-// ── Pill / Badge helpers ─────────────────────────────────────────────────────
+// ── Badge helpers ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: 'passed' | 'failed' }) {
   return status === 'passed' ? (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-      Lulus
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />Lulus
     </span>
   ) : (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
-      Tidak Lulus
+      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />Tidak Lulus
     </span>
   )
 }
@@ -68,21 +67,17 @@ function ScoreBadge({ score, passing = 70 }: { score: number; passing?: number }
 
 function TestTypeBadge({ type }: { type: 'pre' | 'post' }) {
   return type === 'pre' ? (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-50 text-violet-600 border border-violet-100">
-      PRE
-    </span>
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-50 text-violet-600 border border-violet-100">PRE</span>
   ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
-      POST
-    </span>
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">POST</span>
   )
 }
 
-// ── Skeleton ─────────────────────────────────────────────────────────────────
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonRow() {
   return (
     <tr className="border-b border-gray-50">
-      {[40, 180, 60, 60, 80, 90, 100].map((w, i) => (
+      {[40, 180, 60, 60, 80, 90, 120].map((w, i) => (
         <td key={i} className="px-5 py-4">
           <div className="h-3 bg-gray-100 rounded-full animate-pulse" style={{ width: w }} />
         </td>
@@ -91,17 +86,21 @@ function SkeletonRow() {
   )
 }
 
-// ── Modal Detail ─────────────────────────────────────────────────────────────
+// ── Modal Detail ──────────────────────────────────────────────────────────────
 function ModalDetail({
   result,
   onClose,
   onGeneratePdf,
+  onViewPdf,
   pdfLoading,
+  viewLoading,
 }: {
   result: QuizResult
   onClose: () => void
   onGeneratePdf: (id: string) => void
+  onViewPdf: (pdfId: string) => void
   pdfLoading: boolean
+  viewLoading: boolean
 }) {
   const fmt = (d: string) =>
     new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -139,9 +138,9 @@ function ModalDetail({
           <div className="grid grid-cols-2 gap-4 text-sm">
             {[
               { label: 'Nama Peserta', value: result.participant_name },
-              { label: 'NIK', value: result.participant_nik },
-              { label: 'Departemen', value: result.department ?? '—' },
-              { label: 'Tanggal Ujian', value: fmt(result.submitted_at) },
+              { label: 'NIK',          value: result.participant_nik },
+              { label: 'Departemen',   value: result.department ?? '—' },
+              { label: 'Tanggal Ujian',value: fmt(result.submitted_at) },
             ].map(({ label, value }) => (
               <div key={label}>
                 <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">{label}</p>
@@ -192,6 +191,30 @@ function ModalDetail({
           <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">
             Tutup
           </button>
+
+          {/* Tombol lihat PDF — hanya muncul kalau pdf_id sudah ada */}
+          {result.pdf_id && (
+            <button
+              onClick={() => onViewPdf(result.pdf_id!)}
+              disabled={viewLoading}
+              className="px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-opacity disabled:opacity-60"
+              style={{ background: '#eff6ff', color: '#2563eb' }}
+            >
+              {viewLoading ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              )}
+              Lihat PDF
+            </button>
+          )}
+
+          {/* Tombol generate — kalau pdf_id belum ada tampil "Generate", kalau sudah ada tampil "Regenerate" */}
           <button
             onClick={() => onGeneratePdf(result.id)}
             disabled={pdfLoading}
@@ -211,7 +234,7 @@ function ModalDetail({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Generate PDF
+                {result.pdf_id ? 'Regenerate' : 'Generate PDF'}
               </>
             )}
           </button>
@@ -232,9 +255,10 @@ export default function HasilUjian() {
   const [selectedResult, setSelectedResult] = useState<QuizResult | null>(null)
 
   // PDF states
-  const [pdfLoadingId, setPdfLoadingId]     = useState<string | null>(null)  // satuan
-  const [bulkLoading, setBulkLoading]       = useState(false)
-  const [pdfToast, setPdfToast]             = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [pdfLoadingId, setPdfLoadingId]       = useState<string | null>(null)
+  const [viewLoadingId, setViewLoadingId]     = useState<string | null>(null)
+  const [bulkLoading, setBulkLoading]         = useState(false)
+  const [pdfToast, setPdfToast]               = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
 
   // Filters
   const [search, setSearch]               = useState('')
@@ -244,7 +268,6 @@ export default function HasilUjian() {
 
   const PASSING = 70
 
-  // Toast helper
   const showToast = (type: 'success' | 'error', msg: string) => {
     setPdfToast({ type, msg })
     setTimeout(() => setPdfToast(null), 4000)
@@ -258,10 +281,7 @@ export default function HasilUjian() {
       .eq('is_active', true)
       .order('name')
       .then(({ data }) => {
-        if (data?.length) {
-          setTrainingTypes(data)
-          setActiveTab(data[0].id)
-        }
+        if (data?.length) { setTrainingTypes(data); setActiveTab(data[0].id) }
         setLoadingTabs(false)
       })
   }, [])
@@ -278,10 +298,11 @@ export default function HasilUjian() {
         .select(`
           id, nik, training_type_id, score, correct_count,
           total_questions, user_answers, submitted_at, test_type,
+          pdf_id,
           karyawan:nik ( nama, department, factory )
         `)
         .eq('training_type_id', activeTab)
-        .eq('test_type', activeTestType)           // ← filter pre / post
+        .eq('test_type', activeTestType)
         .order('submitted_at', { ascending: false })
 
       if (filterFactory !== 'all') query = query.eq('karyawan.factory', parseInt(filterFactory))
@@ -302,21 +323,22 @@ export default function HasilUjian() {
         (data ?? []).map((item: any): QuizResult => {
           const k = item.karyawan as { nama: string; department: string | null; factory: number | null } | null
           return {
-            id: item.id,
-            nik: item.nik,
+            id:               item.id,
+            nik:              item.nik,
             training_type_id: item.training_type_id,
-            score: item.score ?? 0,
-            correct_count: item.correct_count ?? 0,
-            total_questions: item.total_questions ?? 0,
-            user_answers: item.user_answers ?? {},
-            submitted_at: item.submitted_at,
-            test_type: item.test_type ?? 'post',
-            karyawan: k ?? undefined,
-            status: (item.score ?? 0) >= PASSING ? 'passed' : 'failed',
+            score:            item.score ?? 0,
+            correct_count:    item.correct_count ?? 0,
+            total_questions:  item.total_questions ?? 0,
+            user_answers:     item.user_answers ?? {},
+            submitted_at:     item.submitted_at,
+            test_type:        item.test_type ?? 'post',
+            pdf_id:           item.pdf_id ?? null,        // ← petakan pdf_id
+            karyawan:         k ?? undefined,
+            status:           (item.score ?? 0) >= PASSING ? 'passed' : 'failed',
             participant_name: k?.nama ?? item.nik,
-            participant_nik: item.nik,
-            department: k?.department ?? null,
-            factory: k?.factory ?? null,
+            participant_nik:  item.nik,
+            department:       k?.department ?? null,
+            factory:          k?.factory ?? null,
           }
         })
       )
@@ -325,15 +347,13 @@ export default function HasilUjian() {
     fetchResults()
   }, [activeTab, activeTestType, filterFactory, filterDate])
 
-  // Client-side filter
   const filtered = results.filter((r) => {
     const q = search.toLowerCase()
     const matchSearch =
       r.participant_name.toLowerCase().includes(q) ||
       r.participant_nik.toLowerCase().includes(q) ||
       (r.department ?? '').toLowerCase().includes(q)
-    const matchStatus = filterStatus === 'all' || r.status === filterStatus
-    return matchSearch && matchStatus
+    return matchSearch && (filterStatus === 'all' || r.status === filterStatus)
   })
 
   const activeTraining = trainingTypes.find((t) => t.id === activeTab)
@@ -349,9 +369,13 @@ export default function HasilUjian() {
   const handleGenerateSingle = useCallback(async (hasilId: string) => {
     setPdfLoadingId(hasilId)
     try {
-      await generatePdf(hasilId)
+      const result = await generatePdf(hasilId)
       showToast('success', 'PDF berhasil dibuat!')
-      setSelectedResult(null)
+      // Update pdf_id di local state tanpa re-fetch
+      setResults((prev) => prev.map((r) =>
+        r.id === hasilId ? { ...r, pdf_id: result.pdf_id } : r
+      ))
+      setSelectedResult((prev) => prev?.id === hasilId ? { ...prev, pdf_id: result.pdf_id } : prev)
     } catch (e: any) {
       showToast('error', e.message ?? 'Gagal generate PDF')
     } finally {
@@ -359,17 +383,27 @@ export default function HasilUjian() {
     }
   }, [])
 
+  const handleViewPdf = useCallback(async (pdfId: string) => {
+    setViewLoadingId(pdfId)
+    try {
+      await viewPdf(pdfId)
+    } catch (e: any) {
+      showToast('error', e.message ?? 'Gagal membuka PDF')
+    } finally {
+      setViewLoadingId(null)
+    }
+  }, [])
+
   const handleBulkDownload = useCallback(async () => {
     if (!activeTraining) return
     setBulkLoading(true)
     try {
-      const year = new Date().getFullYear()
-      const semester = new Date().getMonth() < 6 ? 1 : 2
+      const now = new Date()
       await downloadZip({
-        year,
-        semester,
+        year:          now.getFullYear(),
+        semester:      now.getMonth() < 6 ? 1 : 2,
         training_type: activeTraining.code,
-        factory: filterFactory !== 'all' ? `Factory_${filterFactory}` : undefined,
+        factory:       filterFactory !== 'all' ? `Factory_${filterFactory}` : undefined,
       })
       showToast('success', 'ZIP sedang didownload…')
     } catch (e: any) {
@@ -380,20 +414,17 @@ export default function HasilUjian() {
   }, [activeTraining, filterFactory])
 
   const resetTab = () => {
-    setSearch('')
-    setFilterFactory('all')
-    setFilterStatus('all')
-    setFilterDate('all')
-    setActiveTestType('post')
+    setSearch(''); setFilterFactory('all'); setFilterStatus('all')
+    setFilterDate('all'); setActiveTestType('post')
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
-        @keyframes fadein  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
-        @keyframes modalIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
-        @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+        @keyframes fadein   { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+        @keyframes modalIn  { from { opacity:0; transform:scale(0.96); }     to { opacity:1; transform:scale(1); } }
+        @keyframes slideDown{ from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
         .anim-fadein { animation: fadein 0.3s ease both; }
       `}</style>
 
@@ -413,14 +444,12 @@ export default function HasilUjian() {
 
       <div className="min-h-screen bg-gray-50">
 
-        {/* ── Page Header + Tabs ──────────────────────────────── */}
+        {/* Header + Tabs */}
         <div className="bg-white border-b border-gray-100 px-7 pt-7 pb-0">
           <div className="anim-fadein">
             <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1a7a73' }}>Hasil Ujian</h1>
             <p className="text-gray-400 text-sm mt-0.5 mb-5">Pantau hasil dan performa peserta ujian</p>
           </div>
-
-          {/* Training Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-px">
             {loadingTabs
               ? [1,2,3,4,5,6].map((i) => <div key={i} className="h-9 w-32 rounded-t-lg bg-gray-100 animate-pulse" />)
@@ -429,17 +458,13 @@ export default function HasilUjian() {
                     key={t.id}
                     onClick={() => { setActiveTab(t.id); resetTab() }}
                     className="relative px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap"
-                    style={
-                      activeTab === t.id
-                        ? { background: 'white', color: '#329F96', borderTop: '2px solid #329F96', borderLeft: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', marginBottom: '-1px', zIndex: 2 }
-                        : { color: '#9ca3af' }
-                    }
+                    style={activeTab === t.id
+                      ? { background: 'white', color: '#329F96', borderTop: '2px solid #329F96', borderLeft: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', marginBottom: '-1px', zIndex: 2 }
+                      : { color: '#9ca3af' }}
                   >
                     {t.name}
-                    <span
-                      className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold"
-                      style={activeTab === t.id ? { background: '#329F9620', color: '#329F96' } : { background: '#f1f5f9', color: '#94a3b8' }}
-                    >
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                      style={activeTab === t.id ? { background: '#329F9620', color: '#329F96' } : { background: '#f1f5f9', color: '#94a3b8' }}>
                       {activeTab === t.id ? filtered.length : '—'}
                     </span>
                   </button>
@@ -447,16 +472,15 @@ export default function HasilUjian() {
           </div>
         </div>
 
-        {/* ── Content ────────────────────────────────────────── */}
         <div className="px-7 py-6 space-y-4">
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 anim-fadein">
             {[
-              { label: 'Total Peserta', value: stats.total,    color: '#64748b' },
-              { label: 'Lulus',         value: stats.passed,   color: '#059669' },
-              { label: 'Tidak Lulus',   value: stats.failed,   color: '#dc2626' },
-              { label: 'Rata-rata',     value: `${stats.avgScore}%`, color: '#329F96' },
+              { label: 'Total Peserta', value: stats.total,         color: '#64748b' },
+              { label: 'Lulus',         value: stats.passed,        color: '#059669' },
+              { label: 'Tidak Lulus',   value: stats.failed,        color: '#dc2626' },
+              { label: 'Rata-rata',     value: `${stats.avgScore}%`,color: '#329F96' },
             ].map((s, i) => (
               <div key={i} className="p-4 rounded-xl border bg-white" style={{ borderColor: '#f1f5f9' }}>
                 <p className="text-xs text-gray-400 uppercase tracking-wider">{s.label}</p>
@@ -465,22 +489,16 @@ export default function HasilUjian() {
             ))}
           </div>
 
-          {/* Pre / Post toggle + Toolbar */}
+          {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-3 anim-fadein">
-
             {/* PRE / POST toggle */}
             <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
               {(['pre', 'post'] as const).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setActiveTestType(type)}
+                <button key={type} onClick={() => setActiveTestType(type)}
                   className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
-                  style={
-                    activeTestType === type
-                      ? { background: 'white', color: type === 'pre' ? '#7c3aed' : '#2563eb', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }
-                      : { color: '#9ca3af' }
-                  }
-                >
+                  style={activeTestType === type
+                    ? { background: 'white', color: type === 'pre' ? '#7c3aed' : '#2563eb', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }
+                    : { color: '#9ca3af' }}>
                   {type.toUpperCase()} Test
                 </button>
               ))}
@@ -491,72 +509,50 @@ export default function HasilUjian() {
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
               </svg>
-              <input
-                type="text"
-                placeholder="Cari nama, NIK, departemen…"
-                value={search}
+              <input type="text" placeholder="Cari nama, NIK, departemen…" value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 transition"
-                style={{ '--tw-ring-color': '#329F96' } as React.CSSProperties}
-              />
+                style={{ '--tw-ring-color': '#329F96' } as React.CSSProperties} />
             </div>
 
-            {/* Filter Factory */}
-            <select value={filterFactory} onChange={(e) => setFilterFactory(e.target.value as any)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
+            <select value={filterFactory} onChange={(e) => setFilterFactory(e.target.value as any)}
+              className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
               <option value="all">Semua Factory</option>
               <option value="1">Factory 1</option>
               <option value="2">Factory 2</option>
             </select>
 
-            {/* Filter Status */}
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}
+              className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
               <option value="all">Semua Status</option>
               <option value="passed">Lulus</option>
               <option value="failed">Tidak Lulus</option>
             </select>
 
-            {/* Filter Date */}
-            <select value={filterDate} onChange={(e) => setFilterDate(e.target.value as any)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
+            <select value={filterDate} onChange={(e) => setFilterDate(e.target.value as any)}
+              className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
               <option value="all">Semua Waktu</option>
               <option value="today">Hari Ini</option>
               <option value="week">7 Hari Terakhir</option>
               <option value="month">30 Hari Terakhir</option>
             </select>
 
-            {/* Bulk ZIP download */}
-            <button
-              onClick={handleBulkDownload}
-              disabled={bulkLoading || filtered.length === 0}
+            <button onClick={handleBulkDownload} disabled={bulkLoading || filtered.length === 0}
               className="ml-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-opacity disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}
-            >
+              style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}>
               {bulkLoading ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  Menyiapkan ZIP…
-                </>
+                <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>Menyiapkan ZIP…</>
               ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download ZIP
-                  {filtered.length > 0 && (
-                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                      {filtered.length}
-                    </span>
-                  )}
+                <><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                Download ZIP
+                {filtered.length > 0 && <span className="bg-white/20 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{filtered.length}</span>}
                 </>
               )}
             </button>
           </div>
 
-          {/* ── Table ──────────────────────────────────────────── */}
+          {/* Table */}
           <div className="bg-white rounded-2xl overflow-hidden anim-fadein" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07), 0 8px 24px rgba(0,0,0,0.05)' }}>
-            {/* Table top bar */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div>
@@ -573,9 +569,7 @@ export default function HasilUjian() {
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
                     {['No.', 'Peserta', 'Factory', 'Tipe', 'Nilai', 'Status', 'Tanggal', 'Aksi'].map((h, i) => (
-                      <th key={i} className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-left first:w-12 last:text-center">
-                        {h}
-                      </th>
+                      <th key={i} className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-left first:w-12 last:text-center">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -610,43 +604,66 @@ export default function HasilUjian() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center justify-center gap-1.5">
+
                             {/* Detail */}
-                            <button
-                              onClick={() => setSelectedResult(r)}
+                            <button onClick={() => setSelectedResult(r)}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
                               style={{ background: '#329F9615', color: '#329F96' }}
                               onMouseEnter={(e) => (e.currentTarget.style.background = '#329F9625')}
                               onMouseLeave={(e) => (e.currentTarget.style.background = '#329F9615')}
-                              title="Lihat detail"
-                            >
+                              title="Lihat detail">
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                               </svg>
                               Detail
                             </button>
 
-                            {/* Generate PDF satuan */}
-                            <button
-                              onClick={() => handleGenerateSingle(r.id)}
-                              disabled={pdfLoadingId === r.id}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                              style={{ background: '#eff6ff', color: '#2563eb' }}
-                              onMouseEnter={(e) => { if (!pdfLoadingId) e.currentTarget.style.background = '#dbeafe' }}
-                              onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff' }}
-                              title="Generate PDF"
-                            >
-                              {pdfLoadingId === r.id ? (
-                                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                </svg>
-                              ) : (
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                              )}
-                              PDF
-                            </button>
+                            {/* Lihat PDF — hanya tampil kalau pdf_id sudah ada */}
+                            {r.pdf_id ? (
+                              <button
+                                onClick={() => handleViewPdf(r.pdf_id!)}
+                                disabled={viewLoadingId === r.pdf_id}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                                style={{ background: '#eff6ff', color: '#2563eb' }}
+                                onMouseEnter={(e) => { if (!viewLoadingId) e.currentTarget.style.background = '#dbeafe' }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff' }}
+                                title="Lihat PDF">
+                                {viewLoadingId === r.pdf_id ? (
+                                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                )}
+                                PDF
+                              </button>
+                            ) : (
+                              /* Generate PDF — kalau belum ada */
+                              <button
+                                onClick={() => handleGenerateSingle(r.id)}
+                                disabled={pdfLoadingId === r.id}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                                style={{ background: '#f0fdf4', color: '#16a34a' }}
+                                onMouseEnter={(e) => { if (!pdfLoadingId) e.currentTarget.style.background = '#dcfce7' }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = '#f0fdf4' }}
+                                title="Generate PDF">
+                                {pdfLoadingId === r.id ? (
+                                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                  </svg>
+                                )}
+                                Buat PDF
+                              </button>
+                            )}
+
                           </div>
                         </td>
                       </tr>
@@ -664,7 +681,9 @@ export default function HasilUjian() {
           result={selectedResult}
           onClose={() => setSelectedResult(null)}
           onGeneratePdf={handleGenerateSingle}
+          onViewPdf={handleViewPdf}
           pdfLoading={pdfLoadingId === selectedResult.id}
+          viewLoading={viewLoadingId === selectedResult.pdf_id}
         />
       )}
     </>
