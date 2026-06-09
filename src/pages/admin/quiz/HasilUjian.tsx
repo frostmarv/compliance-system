@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { generatePdf, downloadZip } from '@/services/pdfService'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface TrainingType {
@@ -9,7 +10,6 @@ interface TrainingType {
   is_active: boolean
 }
 
-// Interface sesuai tabel 'hasil_ujian' + join 'karyawan'
 interface QuizResult {
   id: string
   nik: string
@@ -19,43 +19,37 @@ interface QuizResult {
   total_questions: number
   user_answers: Record<string, string>
   submitted_at: string
-  
-  // Fields dari join tabel karyawan
+  test_type: 'pre' | 'post'
   karyawan?: {
     nama: string
     department: string | null
     factory: number | null
   }
-  
-  // Computed fields
   status: 'passed' | 'failed'
   participant_name: string
-  participant_email: string
   participant_nik: string
   department: string | null
   factory: number | null
 }
 
-// ── Badge helpers ────────────────────────────────────────────────────────────
+// ── Pill / Badge helpers ─────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: 'passed' | 'failed' }) {
-  const styles = {
-    passed: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', label: 'Lulus' },
-    failed: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-100', label: 'Tidak Lulus' },
-  }
-  const s = styles[status]
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${s.bg} ${s.text} ${s.border}`}>
-      {s.label}
+  return status === 'passed' ? (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+      Lulus
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-100">
+      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
+      Tidak Lulus
     </span>
   )
 }
 
 function FactoryBadge({ factory }: { factory: number | null }) {
-  if (factory == null) return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-500">
-      Global
-    </span>
-  )
+  if (factory == null)
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-500">Global</span>
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-teal-50 text-teal-600 border border-teal-100">
       F{factory}
@@ -63,39 +57,54 @@ function FactoryBadge({ factory }: { factory: number | null }) {
   )
 }
 
-function ScoreBadge({ score, passingGrade = 70 }: { score: number; passingGrade?: number }) {
-  const isPassed = score >= passingGrade
+function ScoreBadge({ score, passing = 70 }: { score: number; passing?: number }) {
+  const ok = score >= passing
   return (
-    <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold ${
-        isPassed ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-      }`}
-    >
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
       {score}%
     </span>
   )
 }
 
-// ── Skeleton loader ──────────────────────────────────────────────────────────
+function TestTypeBadge({ type }: { type: 'pre' | 'post' }) {
+  return type === 'pre' ? (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-50 text-violet-600 border border-violet-100">
+      PRE
+    </span>
+  ) : (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
+      POST
+    </span>
+  )
+}
+
+// ── Skeleton ─────────────────────────────────────────────────────────────────
 function SkeletonRow() {
   return (
     <tr className="border-b border-gray-50">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
+      {[40, 180, 60, 60, 80, 90, 100].map((w, i) => (
         <td key={i} className="px-5 py-4">
-          <div className="h-3 bg-gray-100 rounded-full animate-pulse" style={{ width: `${30 + i * 12}%` }} />
+          <div className="h-3 bg-gray-100 rounded-full animate-pulse" style={{ width: w }} />
         </td>
       ))}
     </tr>
   )
 }
 
-// ── Modal Detail Hasil ───────────────────────────────────────────────────────
-function ModalDetail({ result, onClose }: { result: QuizResult; onClose: () => void }) {
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('id-ID', {
-      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    })
-  }
+// ── Modal Detail ─────────────────────────────────────────────────────────────
+function ModalDetail({
+  result,
+  onClose,
+  onGeneratePdf,
+  pdfLoading,
+}: {
+  result: QuizResult
+  onClose: () => void
+  onGeneratePdf: (id: string) => void
+  pdfLoading: boolean
+}) {
+  const fmt = (d: string) =>
+    new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
   return (
     <div
@@ -109,22 +118,15 @@ function ModalDetail({ result, onClose }: { result: QuizResult; onClose: () => v
         style={{ animation: 'modalIn 0.2s ease both' }}
       >
         {/* Header */}
-        <div
-          className="px-6 py-4 flex items-center justify-between"
-          style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}
-        >
+        <div className="px-6 py-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}>
           <div>
-            <p className="text-white/60 text-xs font-medium uppercase tracking-wider">
-              Detail Hasil Ujian
-            </p>
+            <p className="text-white/60 text-xs font-medium uppercase tracking-wider">Detail Hasil Ujian</p>
             <p className="text-white font-bold text-sm mt-0.5">{result.participant_name}</p>
           </div>
           <div className="flex items-center gap-2">
+            <TestTypeBadge type={result.test_type} />
             <StatusBadge status={result.status} />
-            <button
-              onClick={onClose}
-              className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-            >
+            <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -134,35 +136,30 @@ function ModalDetail({ result, onClose }: { result: QuizResult; onClose: () => v
 
         {/* Body */}
         <div className="px-6 py-5 space-y-5">
-          {/* Participant Info */}
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Nama Peserta</p>
-              <p className="text-gray-700 font-medium">{result.participant_name}</p>
-            </div>
-            <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">NIK</p>
-              <p className="text-gray-700 font-medium">{result.participant_nik}</p>
-            </div>
-            <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Departemen</p>
-              <p className="text-gray-700 font-medium">{result.department ?? '—'}</p>
-            </div>
+            {[
+              { label: 'Nama Peserta', value: result.participant_name },
+              { label: 'NIK', value: result.participant_nik },
+              { label: 'Departemen', value: result.department ?? '—' },
+              { label: 'Tanggal Ujian', value: fmt(result.submitted_at) },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">{label}</p>
+                <p className="text-gray-700 font-medium">{value}</p>
+              </div>
+            ))}
             <div>
               <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Factory</p>
               <FactoryBadge factory={result.factory} />
             </div>
             <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Tanggal Ujian</p>
-              <p className="text-gray-700 font-medium">{formatDate(result.submitted_at)}</p>
+              <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Tipe Ujian</p>
+              <TestTypeBadge type={result.test_type} />
             </div>
           </div>
 
-          {/* Score Summary */}
-          <div
-            className="p-4 rounded-xl border"
-            style={{ background: '#f8fafc', borderColor: '#e2e8f0' }}
-          >
+          {/* Score */}
+          <div className="p-4 rounded-xl border bg-slate-50 border-slate-200">
             <p className="text-gray-400 text-xs uppercase tracking-wider mb-3">Ringkasan Nilai</p>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
@@ -180,32 +177,43 @@ function ModalDetail({ result, onClose }: { result: QuizResult; onClose: () => v
             </div>
           </div>
 
-          {/* Passing Grade Info */}
           <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-100">
             <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <p className="text-xs text-amber-700">
-              <span className="font-semibold">Passing Grade: 70%</span> • Peserta dinyatakan lulus jika mencapai nilai minimal 70%
+              <span className="font-semibold">Passing Grade: 70%</span> — Peserta dinyatakan lulus jika mencapai nilai minimal 70%
             </p>
           </div>
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors"
-          >
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">
             Tutup
           </button>
           <button
-            className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors"
+            onClick={() => onGeneratePdf(result.id)}
+            disabled={pdfLoading}
+            className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-opacity disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            📄 Export PDF
+            {pdfLoading ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                Generating…
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Generate PDF
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -213,24 +221,36 @@ function ModalDetail({ result, onClose }: { result: QuizResult; onClose: () => v
   )
 }
 
-// ── Main Page ────────────────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function HasilUjian() {
-  const [trainingTypes, setTrainingTypes] = useState<TrainingType[]>([])
-  const [activeTab, setActiveTab] = useState<string>('')
-  const [results, setResults] = useState<QuizResult[]>([])
-  const [loadingTabs, setLoadingTabs] = useState(true)
+  const [trainingTypes, setTrainingTypes]   = useState<TrainingType[]>([])
+  const [activeTab, setActiveTab]           = useState<string>('')
+  const [activeTestType, setActiveTestType] = useState<'pre' | 'post'>('post')
+  const [results, setResults]               = useState<QuizResult[]>([])
+  const [loadingTabs, setLoadingTabs]       = useState(true)
   const [loadingResults, setLoadingResults] = useState(false)
   const [selectedResult, setSelectedResult] = useState<QuizResult | null>(null)
-  
+
+  // PDF states
+  const [pdfLoadingId, setPdfLoadingId]     = useState<string | null>(null)  // satuan
+  const [bulkLoading, setBulkLoading]       = useState(false)
+  const [pdfToast, setPdfToast]             = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+
   // Filters
-  const [search, setSearch] = useState('')
-  const [filterFactory, setFilterFactory] = useState<'all' | '1' | '2' | 'null'>('all')
-  const [filterStatus, setFilterStatus] = useState<'all' | 'passed' | 'failed'>('all')
-  const [filterDate, setFilterDate] = useState<'all' | 'today' | 'week' | 'month'>('all')
+  const [search, setSearch]               = useState('')
+  const [filterFactory, setFilterFactory] = useState<'all' | '1' | '2'>('all')
+  const [filterStatus, setFilterStatus]   = useState<'all' | 'passed' | 'failed'>('all')
+  const [filterDate, setFilterDate]       = useState<'all' | 'today' | 'week' | 'month'>('all')
 
-  const PASSING_GRADE = 70
+  const PASSING = 70
 
-  // 1. Fetch training types untuk Tabs
+  // Toast helper
+  const showToast = (type: 'success' | 'error', msg: string) => {
+    setPdfToast({ type, msg })
+    setTimeout(() => setPdfToast(null), 4000)
+  }
+
+  // 1. Fetch training types
   useEffect(() => {
     supabase
       .from('training_types')
@@ -238,7 +258,7 @@ export default function HasilUjian() {
       .eq('is_active', true)
       .order('name')
       .then(({ data }) => {
-        if (data && data.length > 0) {
+        if (data?.length) {
           setTrainingTypes(data)
           setActiveTab(data[0].id)
         }
@@ -246,316 +266,317 @@ export default function HasilUjian() {
       })
   }, [])
 
-  // 2. Fetch hasil ujian + join karyawan sesuai training_type_id
+  // 2. Fetch hasil ujian
   useEffect(() => {
     if (!activeTab) return
-    
     const fetchResults = async () => {
       setLoadingResults(true)
       setResults([])
-      
-      // Base query: ambil dari tabel 'hasil_ujian' + join 'karyawan'
+
       let query = supabase
         .from('hasil_ujian')
         .select(`
-          id,
-          nik,
-          training_type_id,
-          score,
-          correct_count,
-          total_questions,
-          user_answers,
-          submitted_at,
-          karyawan:nik (
-            nama,
-            department,
-            factory
-          )
+          id, nik, training_type_id, score, correct_count,
+          total_questions, user_answers, submitted_at, test_type,
+          karyawan:nik ( nama, department, factory )
         `)
-        .eq('training_type_id', activeTab) // ⭐ FILTER UTAMA: sesuai training
+        .eq('training_type_id', activeTab)
+        .eq('test_type', activeTestType)           // ← filter pre / post
         .order('submitted_at', { ascending: false })
 
-      // Apply filter Factory
-      if (filterFactory !== 'all') {
-        if (filterFactory === 'null') {
-          // Filter: factory IS NULL (global)
-          query = query.is('karyawan.factory', null)
-        } else {
-          // Filter: factory = 1 atau 2
-          query = query.eq('karyawan.factory', parseInt(filterFactory))
-        }
-      }
+      if (filterFactory !== 'all') query = query.eq('karyawan.factory', parseInt(filterFactory))
 
-      // Apply filter Status (computed from score)
-      if (filterStatus !== 'all') {
-        // Note: filter status dilakukan di frontend karena computed field
-      }
-
-      // Apply filter Date
       if (filterDate !== 'all') {
         const now = new Date()
-        let startDate: Date
-        switch (filterDate) {
-          case 'today':
-            startDate = new Date(now.setHours(0, 0, 0, 0))
-            break
-          case 'week':
-            startDate = new Date(now.setDate(now.getDate() - 7))
-            break
-          case 'month':
-            startDate = new Date(now.setMonth(now.getMonth() - 1))
-            break
-          default:
-            startDate = new Date(0)
-        }
-        query = query.gte('submitted_at', startDate.toISOString())
+        const start =
+          filterDate === 'today' ? new Date(new Date().setHours(0, 0, 0, 0)) :
+          filterDate === 'week'  ? new Date(now.setDate(now.getDate() - 7)) :
+                                   new Date(now.setMonth(now.getMonth() - 1))
+        query = query.gte('submitted_at', start.toISOString())
       }
 
       const { data, error } = await query
+      if (error) { console.error(error); setLoadingResults(false); return }
 
-      if (error) {
-        console.error('Error fetching results:', error)
-        setLoadingResults(false)
-        return
-      }
-
-      // Transform data: mapping + computed fields
-      const transformed = (data ?? []).map((item: any): QuizResult => {
-        const karyawan = item.karyawan as { nama: string; department: string | null; factory: number | null } | null
-        const score = item.score ?? 0
-        const status = score >= PASSING_GRADE ? 'passed' : 'failed'
-        
-        return {
-          id: item.id,
-          nik: item.nik,
-          training_type_id: item.training_type_id,
-          score,
-          correct_count: item.correct_count ?? 0,
-          total_questions: item.total_questions ?? 0,
-          user_answers: item.user_answers ?? {},
-          submitted_at: item.submitted_at,
-          karyawan: karyawan ?? undefined,
-          
-          // Computed / flattened fields untuk kemudahan UI
-          status,
-          participant_name: karyawan?.nama ?? item.nik,
-          participant_email: '', // Tidak ada field email di tabel karyawan
-          participant_nik: item.nik,
-          department: karyawan?.department ?? null,
-          factory: karyawan?.factory ?? null,
-        }
-      })
-
-      setResults(transformed)
+      setResults(
+        (data ?? []).map((item: any): QuizResult => {
+          const k = item.karyawan as { nama: string; department: string | null; factory: number | null } | null
+          return {
+            id: item.id,
+            nik: item.nik,
+            training_type_id: item.training_type_id,
+            score: item.score ?? 0,
+            correct_count: item.correct_count ?? 0,
+            total_questions: item.total_questions ?? 0,
+            user_answers: item.user_answers ?? {},
+            submitted_at: item.submitted_at,
+            test_type: item.test_type ?? 'post',
+            karyawan: k ?? undefined,
+            status: (item.score ?? 0) >= PASSING ? 'passed' : 'failed',
+            participant_name: k?.nama ?? item.nik,
+            participant_nik: item.nik,
+            department: k?.department ?? null,
+            factory: k?.factory ?? null,
+          }
+        })
+      )
       setLoadingResults(false)
     }
-
     fetchResults()
-  }, [activeTab, filterFactory, filterDate])
+  }, [activeTab, activeTestType, filterFactory, filterDate])
 
-  // 3. Filter client-side: search + status
+  // Client-side filter
   const filtered = results.filter((r) => {
-    // Search: nama, NIK, departemen
-    const matchSearch = 
-      r.participant_name.toLowerCase().includes(search.toLowerCase()) ||
-      r.participant_nik.toLowerCase().includes(search.toLowerCase()) ||
-      (r.department ?? '').toLowerCase().includes(search.toLowerCase())
-    
-    // Status filter (computed)
+    const q = search.toLowerCase()
+    const matchSearch =
+      r.participant_name.toLowerCase().includes(q) ||
+      r.participant_nik.toLowerCase().includes(q) ||
+      (r.department ?? '').toLowerCase().includes(q)
     const matchStatus = filterStatus === 'all' || r.status === filterStatus
-    
     return matchSearch && matchStatus
   })
 
   const activeTraining = trainingTypes.find((t) => t.id === activeTab)
 
-  // Stats summary
   const stats = {
-    total: filtered.length,
-    passed: filtered.filter(r => r.status === 'passed').length,
-    failed: filtered.filter(r => r.status === 'failed').length,
-    avgScore: filtered.length > 0 
-      ? Math.round(filtered.reduce((acc, r) => acc + r.score, 0) / filtered.length) 
-      : 0,
+    total:    filtered.length,
+    passed:   filtered.filter((r) => r.status === 'passed').length,
+    failed:   filtered.filter((r) => r.status === 'failed').length,
+    avgScore: filtered.length ? Math.round(filtered.reduce((a, r) => a + r.score, 0) / filtered.length) : 0,
   }
 
+  // ── PDF handlers ──────────────────────────────────────────────────────────
+  const handleGenerateSingle = useCallback(async (hasilId: string) => {
+    setPdfLoadingId(hasilId)
+    try {
+      await generatePdf(hasilId)
+      showToast('success', 'PDF berhasil dibuat!')
+      setSelectedResult(null)
+    } catch (e: any) {
+      showToast('error', e.message ?? 'Gagal generate PDF')
+    } finally {
+      setPdfLoadingId(null)
+    }
+  }, [])
+
+  const handleBulkDownload = useCallback(async () => {
+    if (!activeTraining) return
+    setBulkLoading(true)
+    try {
+      const year = new Date().getFullYear()
+      const semester = new Date().getMonth() < 6 ? 1 : 2
+      await downloadZip({
+        year,
+        semester,
+        training_type: activeTraining.code,
+        factory: filterFactory !== 'all' ? `Factory_${filterFactory}` : undefined,
+      })
+      showToast('success', 'ZIP sedang didownload…')
+    } catch (e: any) {
+      showToast('error', e.message ?? 'Gagal download ZIP')
+    } finally {
+      setBulkLoading(false)
+    }
+  }, [activeTraining, filterFactory])
+
+  const resetTab = () => {
+    setSearch('')
+    setFilterFactory('all')
+    setFilterStatus('all')
+    setFilterDate('all')
+    setActiveTestType('post')
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
-        @keyframes fadein { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+        @keyframes fadein  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
         @keyframes modalIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
-        .animate-fadein { animation: fadein 0.35s ease both; }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+        .anim-fadein { animation: fadein 0.3s ease both; }
       `}</style>
+
+      {/* Toast */}
+      {pdfToast && (
+        <div
+          className="fixed top-5 right-5 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium"
+          style={{ animation: 'slideDown 0.25s ease both', background: pdfToast.type === 'success' ? '#ecfdf5' : '#fef2f2', color: pdfToast.type === 'success' ? '#065f46' : '#991b1b', border: `1px solid ${pdfToast.type === 'success' ? '#a7f3d0' : '#fecaca'}` }}
+        >
+          {pdfToast.type === 'success'
+            ? <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+            : <svg className="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          }
+          {pdfToast.msg}
+        </div>
+      )}
 
       <div className="min-h-screen bg-gray-50">
 
-        {/* ── Page Header ──────────────────────────────────────── */}
+        {/* ── Page Header + Tabs ──────────────────────────────── */}
         <div className="bg-white border-b border-gray-100 px-7 pt-7 pb-0">
-          <div className="animate-fadein">
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1a7a73' }}>
-              Hasil Ujian
-            </h1>
-            <p className="text-gray-400 text-sm mt-0.5 mb-4">
-              Pantau hasil dan performa peserta ujian
-            </p>
+          <div className="anim-fadein">
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1a7a73' }}>Hasil Ujian</h1>
+            <p className="text-gray-400 text-sm mt-0.5 mb-5">Pantau hasil dan performa peserta ujian</p>
           </div>
 
-          {/* ── Tabs: Dynamic dari training_types ────────────────── */}
+          {/* Training Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-px">
-            {loadingTabs ? (
-              [1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-9 w-32 rounded-t-lg bg-gray-100 animate-pulse" />
-              ))
-            ) : (
-              trainingTypes.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => { 
-                    setActiveTab(t.id)
-                    setSearch('')
-                    setFilterFactory('all')
-                    setFilterStatus('all')
-                    setFilterDate('all')
-                  }}
-                  className="relative px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap"
-                  style={
-                    activeTab === t.id
-                      ? { background: 'white', color: '#329F96', borderTop: '2px solid #329F96', borderLeft: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', marginBottom: '-1px', zIndex: 2 }
-                      : { color: '#9ca3af', background: 'transparent' }
-                  }
-                >
-                  {t.name}
-                  <span
-                    className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold"
-                    style={activeTab === t.id ? { background: '#329F9620', color: '#329F96' } : { background: '#f1f5f9', color: '#94a3b8' }}
+            {loadingTabs
+              ? [1,2,3,4,5,6].map((i) => <div key={i} className="h-9 w-32 rounded-t-lg bg-gray-100 animate-pulse" />)
+              : trainingTypes.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => { setActiveTab(t.id); resetTab() }}
+                    className="relative px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap"
+                    style={
+                      activeTab === t.id
+                        ? { background: 'white', color: '#329F96', borderTop: '2px solid #329F96', borderLeft: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', marginBottom: '-1px', zIndex: 2 }
+                        : { color: '#9ca3af' }
+                    }
                   >
-                    {activeTab === t.id ? filtered.length : '—'}
-                  </span>
-                </button>
-              ))
-            )}
+                    {t.name}
+                    <span
+                      className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                      style={activeTab === t.id ? { background: '#329F9620', color: '#329F96' } : { background: '#f1f5f9', color: '#94a3b8' }}
+                    >
+                      {activeTab === t.id ? filtered.length : '—'}
+                    </span>
+                  </button>
+                ))}
           </div>
         </div>
 
-        {/* ── Content ──────────────────────────────────────────── */}
+        {/* ── Content ────────────────────────────────────────── */}
         <div className="px-7 py-6 space-y-4">
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fadein">
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 anim-fadein">
             {[
-              { label: 'Total Peserta', value: stats.total, color: '#64748b', bg: '#f1f5f9' },
-              { label: 'Lulus', value: stats.passed, color: '#059669', bg: '#dcfce7' },
-              { label: 'Tidak Lulus', value: stats.failed, color: '#dc2626', bg: '#fee2e2' },
-              { label: 'Rata-rata Nilai', value: `${stats.avgScore}%`, color: '#329F96', bg: '#f0fdfa' },
-            ].map((stat, i) => (
-              <div
-                key={i}
-                className="p-4 rounded-xl border"
-                style={{ background: 'white', borderColor: '#f1f5f9' }}
-              >
-                <p className="text-xs text-gray-400 uppercase tracking-wider">{stat.label}</p>
-                <p className="text-2xl font-bold mt-1" style={{ color: stat.color }}>{stat.value}</p>
+              { label: 'Total Peserta', value: stats.total,    color: '#64748b' },
+              { label: 'Lulus',         value: stats.passed,   color: '#059669' },
+              { label: 'Tidak Lulus',   value: stats.failed,   color: '#dc2626' },
+              { label: 'Rata-rata',     value: `${stats.avgScore}%`, color: '#329F96' },
+            ].map((s, i) => (
+              <div key={i} className="p-4 rounded-xl border bg-white" style={{ borderColor: '#f1f5f9' }}>
+                <p className="text-xs text-gray-400 uppercase tracking-wider">{s.label}</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
               </div>
             ))}
           </div>
 
-          {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-3 animate-fadein">
+          {/* Pre / Post toggle + Toolbar */}
+          <div className="flex flex-wrap items-center gap-3 anim-fadein">
+
+            {/* PRE / POST toggle */}
+            <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
+              {(['pre', 'post'] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setActiveTestType(type)}
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
+                  style={
+                    activeTestType === type
+                      ? { background: 'white', color: type === 'pre' ? '#7c3aed' : '#2563eb', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }
+                      : { color: '#9ca3af' }
+                  }
+                >
+                  {type.toUpperCase()} Test
+                </button>
+              ))}
+            </div>
+
             {/* Search */}
-            <div className="relative flex-1 min-w-[200px]">
+            <div className="relative flex-1 min-w-[180px]">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
               </svg>
               <input
                 type="text"
-                placeholder="Cari nama, NIK, atau departemen…"
+                placeholder="Cari nama, NIK, departemen…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm
-                           focus:outline-none focus:ring-2 transition"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 transition"
                 style={{ '--tw-ring-color': '#329F96' } as React.CSSProperties}
               />
             </div>
 
             {/* Filter Factory */}
-            <select
-              value={filterFactory}
-              onChange={(e) => setFilterFactory(e.target.value as any)}
-              className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none focus:ring-2 transition cursor-pointer"
-              style={{ '--tw-ring-color': '#329F96' } as React.CSSProperties}
-            >
+            <select value={filterFactory} onChange={(e) => setFilterFactory(e.target.value as any)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
               <option value="all">Semua Factory</option>
-              <option value="null">Global</option>
               <option value="1">Factory 1</option>
               <option value="2">Factory 2</option>
             </select>
 
             {/* Filter Status */}
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as any)}
-              className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none focus:ring-2 transition cursor-pointer"
-              style={{ '--tw-ring-color': '#329F96' } as React.CSSProperties}
-            >
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
               <option value="all">Semua Status</option>
               <option value="passed">Lulus</option>
               <option value="failed">Tidak Lulus</option>
             </select>
 
             {/* Filter Date */}
-            <select
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value as any)}
-              className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none focus:ring-2 transition cursor-pointer"
-              style={{ '--tw-ring-color': '#329F96' } as React.CSSProperties}
-            >
+            <select value={filterDate} onChange={(e) => setFilterDate(e.target.value as any)} className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
               <option value="all">Semua Waktu</option>
               <option value="today">Hari Ini</option>
               <option value="week">7 Hari Terakhir</option>
               <option value="month">30 Hari Terakhir</option>
             </select>
 
-            {/* Export Button */}
+            {/* Bulk ZIP download */}
             <button
-              className="ml-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-opacity"
+              onClick={handleBulkDownload}
+              disabled={bulkLoading || filtered.length === 0}
+              className="ml-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-opacity disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Export
+              {bulkLoading ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Menyiapkan ZIP…
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download ZIP
+                  {filtered.length > 0 && (
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                      {filtered.length}
+                    </span>
+                  )}
+                </>
+              )}
             </button>
           </div>
 
           {/* ── Table ──────────────────────────────────────────── */}
-          <div
-            className="bg-white rounded-2xl overflow-hidden animate-fadein"
-            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07), 0 8px 24px rgba(0,0,0,0.05)', animationDelay: '80ms', animationFillMode: 'both' }}
-          >
-            {/* Table header */}
+          <div className="bg-white rounded-2xl overflow-hidden anim-fadein" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07), 0 8px 24px rgba(0,0,0,0.05)' }}>
+            {/* Table top bar */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-gray-700">{activeTraining?.name ?? '—'}</p>
-                <p className="text-xs text-gray-400">{activeTraining?.code}</p>
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="text-sm font-bold text-gray-700">{activeTraining?.name ?? '—'}</p>
+                  <p className="text-xs text-gray-400">{activeTraining?.code} • {activeTestType === 'pre' ? 'Pre Test' : 'Post Test'}</p>
+                </div>
+                <TestTypeBadge type={activeTestType} />
               </div>
-              <span className="text-xs text-gray-400">
-                {filtered.length} data ditemukan
-              </span>
+              <span className="text-xs text-gray-400">{filtered.length} data</span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-12">No.</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Peserta</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">Factory</th>
-                    <th className="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">Nilai</th>
-                    <th className="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-28">Status</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-36">Tanggal</th>
-                    <th className="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">Aksi</th>
+                    {['No.', 'Peserta', 'Factory', 'Tipe', 'Nilai', 'Status', 'Tanggal', 'Aksi'].map((h, i) => (
+                      <th key={i} className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-left first:w-12 last:text-center">
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -564,75 +585,69 @@ export default function HasilUjian() {
                     : filtered.length === 0
                     ? (
                       <tr>
-                        <td colSpan={7} className="text-center py-16 text-gray-300">
+                        <td colSpan={8} className="text-center py-16 text-gray-300">
                           <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                           </svg>
-                          <p className="text-sm">Belum ada hasil ujian untuk kategori ini</p>
+                          <p className="text-sm">Belum ada hasil {activeTestType === 'pre' ? 'pre test' : 'post test'} untuk training ini</p>
                         </td>
                       </tr>
                     )
-                    : filtered.map((result, i) => (
-                      <tr
-                        key={result.id}
-                        className="hover:bg-gray-50/70 transition-colors animate-fadein"
-                        style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}
-                      >
-                        {/* Nomor */}
+                    : filtered.map((r, i) => (
+                      <tr key={r.id} className="hover:bg-gray-50/70 transition-colors anim-fadein" style={{ animationDelay: `${i * 25}ms`, animationFillMode: 'both' }}>
+                        <td className="px-5 py-4 text-gray-400 text-xs font-medium">{i + 1}</td>
                         <td className="px-5 py-4">
-                          <span className="text-gray-400 text-xs font-medium">{i + 1}</span>
+                          <p className="text-gray-700 font-medium text-sm">{r.participant_name}</p>
+                          <p className="text-gray-400 text-xs">NIK: {r.participant_nik}</p>
+                          {r.department && <p className="text-gray-400 text-[10px] mt-0.5">{r.department}</p>}
                         </td>
-
-                        {/* Peserta Info */}
+                        <td className="px-5 py-4"><FactoryBadge factory={r.factory} /></td>
+                        <td className="px-5 py-4"><TestTypeBadge type={r.test_type} /></td>
+                        <td className="px-5 py-4 text-center"><ScoreBadge score={r.score} /></td>
+                        <td className="px-5 py-4 text-center"><StatusBadge status={r.status} /></td>
+                        <td className="px-5 py-4 text-xs text-gray-500">
+                          {new Date(r.submitted_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
                         <td className="px-5 py-4">
-                          <div className="min-w-[180px]">
-                            <p className="text-gray-700 font-medium text-sm">{result.participant_name}</p>
-                            <p className="text-gray-400 text-xs">NIK: {result.participant_nik}</p>
-                            {result.department && (
-                              <p className="text-gray-400 text-[10px] mt-0.5">{result.department}</p>
-                            )}
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* Detail */}
+                            <button
+                              onClick={() => setSelectedResult(r)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                              style={{ background: '#329F9615', color: '#329F96' }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = '#329F9625')}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = '#329F9615')}
+                              title="Lihat detail"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              Detail
+                            </button>
+
+                            {/* Generate PDF satuan */}
+                            <button
+                              onClick={() => handleGenerateSingle(r.id)}
+                              disabled={pdfLoadingId === r.id}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                              style={{ background: '#eff6ff', color: '#2563eb' }}
+                              onMouseEnter={(e) => { if (!pdfLoadingId) e.currentTarget.style.background = '#dbeafe' }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff' }}
+                              title="Generate PDF"
+                            >
+                              {pdfLoadingId === r.id ? (
+                                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                </svg>
+                              ) : (
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              )}
+                              PDF
+                            </button>
                           </div>
-                        </td>
-
-                        {/* Factory */}
-                        <td className="px-5 py-4">
-                          <FactoryBadge factory={result.factory} />
-                        </td>
-
-                        {/* Score */}
-                        <td className="px-5 py-4 text-center">
-                          <ScoreBadge score={result.score} passingGrade={PASSING_GRADE} />
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-5 py-4 text-center">
-                          <StatusBadge status={result.status} />
-                        </td>
-
-                        {/* Date */}
-                        <td className="px-5 py-4">
-                          <span className="text-gray-500 text-xs">
-                            {new Date(result.submitted_at).toLocaleDateString('id-ID', { 
-                              day: '2-digit', month: 'short', year: 'numeric' 
-                            })}
-                          </span>
-                        </td>
-
-                        {/* Aksi */}
-                        <td className="px-5 py-4 text-center">
-                          <button
-                            onClick={() => setSelectedResult(result)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                            style={{ background: '#329F9615', color: '#329F96' }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = '#329F9625')}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = '#329F9615')}
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            Detail
-                          </button>
                         </td>
                       </tr>
                     ))}
@@ -643,9 +658,14 @@ export default function HasilUjian() {
         </div>
       </div>
 
-      {/* ── Modal ──────────────────────────────────────────────── */}
+      {/* Modal */}
       {selectedResult && (
-        <ModalDetail result={selectedResult} onClose={() => setSelectedResult(null)} />
+        <ModalDetail
+          result={selectedResult}
+          onClose={() => setSelectedResult(null)}
+          onGeneratePdf={handleGenerateSingle}
+          pdfLoading={pdfLoadingId === selectedResult.id}
+        />
       )}
     </>
   )
