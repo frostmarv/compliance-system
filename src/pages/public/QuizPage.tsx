@@ -78,8 +78,8 @@ const quizzes = [
     name: 'Company Profile',
     sub: 'Pengenalan perusahaan & struktur organisasi',
     icon: <BuildingIcon />,
-    path: null,
-    active: false,
+    path: '/quiz/company',
+    active: true,
   },
   {
     name: 'Code of Conduct',

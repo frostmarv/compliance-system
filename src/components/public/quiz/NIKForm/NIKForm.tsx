@@ -1,5 +1,5 @@
 // ✅ FIX 1: Import types dengan keyword 'type'
-import { computeQuizStatus, getStatusMessage, checkFactoryAccess } from '@/lib/quiz-status'
+import { computeQuizStatus, getStatusMessage } from '@/lib/quiz-status'
 import type { QuizSchedule, QuizStatus } from '@/lib/quiz-status'
 
 interface NIKFormProps {
@@ -7,14 +7,17 @@ interface NIKFormProps {
   quizName: string                        // Nama quiz
   quizSchedule: QuizSchedule | null       // Data schedule
   scheduleLoading?: boolean               // State loading schedule
-  
+
+  // ── NIK Config ────────────────────────────────────────────────
+  // Default NIK_MIN=8, NIK_MAX=8 (untuk quiz umum, NIK 8 digit fix)
+  // Untuk CTPAT: nikMin=8, nikMax=15 (NIK bisa 8–15 digit)
+  nikMin?: number
+  nikMax?: number
+
   // ── NIK Logic ─────────────────────────────────────────────────
   nik: string
   onChange: (nik: string) => void
   onSubmit?: (nik: string) => void        // Callback saat NIK valid (auto-trigger)
-  onFactoryMismatch?: (reason: string) => void // Callback jika factory tidak cocok
-  userFactory?: number                    // Factory user (untuk validasi opsional di sini)
-  
   // ── UI States ─────────────────────────────────────────────────
   searching?: boolean
   found?: boolean
@@ -22,52 +25,68 @@ interface NIKFormProps {
   disabled?: boolean
 }
 
-export const NIKForm = ({ 
+export const NIKForm = ({
   quizName,
   quizSchedule,
   scheduleLoading = false,
+  nikMin = 8,
+  nikMax = 8,
   nik,
   onChange,
   onSubmit,
-  onFactoryMismatch,
-  userFactory,
-  searching = false, 
+  searching = false,
   found = false,
   error,
   disabled = false
 }: NIKFormProps) => {
-  
+
   // ─ Compute Status (Hanya cek waktu & manual lock) ─────────────
   let status: QuizStatus = 'LOCKED'
-  
+
   if (scheduleLoading) {
-    status = 'LOCKED' // Tampil locked sementara saat fetch
+    status = 'LOCKED'
   } else if (quizSchedule !== null) {
     status = computeQuizStatus(quizSchedule)
   }
 
   const isTimeValid = status === 'OPEN' && !disabled
   const message = getStatusMessage(status, quizName)
-  
+
   // ── Handlers ─────────────────────────────────────────────────
   const handleNikChange = (val: string) => {
-    const clean = val.replace(/\D/g, '').slice(0, 8)
+    const clean = val.replace(/\D/g, '').slice(0, nikMax)
     onChange(clean)
-    
-    // ✅ AUTO-SUBMIT: Jika NIK 8 digit + waktu valid + belum searching
-    if (clean.length === 8 && isTimeValid && !searching && onSubmit) {
-      
-      // Optional: Factory check di sini (jika userFactory sudah tersedia)
-      if (found && userFactory && quizSchedule && onFactoryMismatch) {
-        const access = checkFactoryAccess(quizSchedule, userFactory)
-        if (!access.allowed) {
-          onFactoryMismatch(access.reason || 'Anda tidak diizinkan mengambil quiz ini karena perbedaan pabrik.')
-          return // Stop auto-submit
-        }
-      }
-      
-      // Trigger parent handler
+
+    // AUTO-SUBMIT:
+    // - Jika nikMin === nikMax (misal 8): trigger tepat di 8 digit
+    // - Jika nikMin < nikMax (misal 8–15, kasus CTPAT): trigger di nikMax (15)
+    //   karena user dengan NIK 8 digit harus mengetik sampai 15 baru dicari,
+    //   KECUALI kita ingin support submit di nikMax saja untuk CTPAT.
+    //
+    // Lihat fetchEmployee di CtpatQuiz.tsx — ia menerima NIK 8–15 dan akan
+    // mencari ke DB dengan panjang berapa pun asalkan >= nikMin. Jadi kita
+    // tambahkan tombol "Cari" sebagai fallback untuk nikMin < nikMax.
+    //
+    // Untuk auto-submit: trigger di nikMax (selalu konsisten).
+    if (clean.length === nikMax && onSubmit) {
       onSubmit(clean)
+    }
+  }
+
+  // Tombol "Cari Manual" muncul jika:
+  //   - nikMin < nikMax (variabel-length NIK, misal CTPAT)
+  //   - nik sudah >= nikMin dan < nikMax (belum capai auto-trigger)
+  //   - tidak sedang searching
+  const showManualSearch =
+    nikMin < nikMax &&
+    nik.length >= nikMin &&
+    nik.length < nikMax &&
+    !searching &&
+    isTimeValid
+
+  const handleManualSearch = () => {
+    if (onSubmit && nik.length >= nikMin) {
+      onSubmit(nik)
     }
   }
 
@@ -94,34 +113,34 @@ export const NIKForm = ({
 
   // ── Main UI ──────────────────────────────────────────────────
   return (
-    <div className="card nik-card" style={{ 
-      border: `1px solid ${tone.border}`, 
+    <div className="card nik-card" style={{
+      border: `1px solid ${tone.border}`,
       background: tone.bg,
       transition: 'border-color 0.2s, background 0.2s'
     }}>
-      
+
       {/* ─ Status Badge ─────────────────────────────────────── */}
-      <div style={{ 
-        display: 'inline-flex', 
-        alignItems: 'center', 
-        gap: 6, 
-        padding: '6px 12px', 
-        borderRadius: 99, 
-        background: 'white', 
+      <div style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '6px 12px',
+        borderRadius: 99,
+        background: 'white',
         border: `1px solid ${tone.border}`,
         marginBottom: 16,
         fontSize: 12,
         fontWeight: 600,
         color: tone.text
       }}>
-        <span style={{ 
-          width: 8, height: 8, borderRadius: '50%', 
+        <span style={{
+          width: 8, height: 8, borderRadius: '50%',
           background: tone.icon,
           animation: status === 'OPEN' ? 'pulse 2s infinite' : 'none'
         }} />
-        {status === 'OPEN' ? '🟢 Aktif' : 
+        {status === 'OPEN'     ? '🟢 Aktif' :
          status === 'UPCOMING' ? '🕐 Akan Datang' :
-         status === 'EXPIRED' ? '🔒 Kedaluwarsa' : '🚫 Terkunci'}
+         status === 'EXPIRED'  ? '🔒 Kedaluwarsa' : '🚫 Terkunci'}
       </div>
 
       {/* ── Header ───────────────────────────────────────────── */}
@@ -131,17 +150,17 @@ export const NIKForm = ({
             d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" />
         </svg>
       </div>
-      
+
       <div className="nik-title" style={{ color: tone.text }}>{quizName}</div>
       <div className="nik-subtitle" style={{ color: tone.text, opacity: 0.8 }}>
         {message.title}
       </div>
 
       {/* ── Info Message ─────────────────────────────────────── */}
-      <div style={{ 
-        margin: '16px 0', 
-        padding: '12px 16px', 
-        borderRadius: 12, 
+      <div style={{
+        margin: '16px 0',
+        padding: '12px 16px',
+        borderRadius: 12,
         background: 'white',
         border: `1px solid ${tone.border}`,
         fontSize: 13,
@@ -150,35 +169,35 @@ export const NIKForm = ({
       }}>
         {message.description}
       </div>
-  
+
       {/* ── NIK Input (Active if Time Valid) ─────────────────── */}
-      <span className="nik-label" style={{ 
+      <span className="nik-label" style={{
         color: isTimeValid ? tone.text : '#9ca3af',
         opacity: isTimeValid ? 1 : 0.6
       }}>
         Nomor Induk Karyawan
       </span>
-      
+
       <div className="nik-input-wrap">
         <input
           className="nik-input"
           type="text"
           inputMode="numeric"
-          placeholder={isTimeValid ? "Contoh: 12345678" : "Quiz tidak tersedia"}
+          placeholder={isTimeValid ? "Contoh: 1234567899" : "Quiz tidak tersedia"}
           value={nik}
-          maxLength={8}
+          maxLength={nikMax}
           autoFocus={isTimeValid}
           disabled={!isTimeValid || searching}
           onChange={e => handleNikChange(e.target.value)}
-          style={{ 
+          style={{
             opacity: isTimeValid ? 1 : 0.5,
             cursor: isTimeValid ? 'text' : 'not-allowed'
           }}
         />
-        
+
         {/* Spinner saat searching */}
         {searching && <div className="nik-spinner" />}
-        
+
         {/* Checkmark saat found + valid */}
         {!searching && found && isTimeValid && (
           <div className="nik-check" style={{ color: tone.icon }}>
@@ -188,46 +207,101 @@ export const NIKForm = ({
           </div>
         )}
       </div>
-  
-      {/* ── Progress Dots ────────────────────────────────────── */}
+
+      {/* ── Progress Dots ─────────────────────────────────────── */}
+      {/* Render nikMax slot. Jika nikMin < nikMax, beri gap visual setelah dot ke-nikMin */}
       <div className="nik-dots" style={{ opacity: isTimeValid ? 1 : 0.3 }}>
-        {Array.from({length: 8}).map((_, i) => (
-          <div key={i} className={`nik-dot${i < nik.length ? ' filled' : ''}`} 
-               style={{ background: i < nik.length ? tone.icon : '#e2e8f0' }} />
+        {Array.from({ length: nikMax }).map((_, i) => (
+          <div
+            key={i}
+            className={`nik-dot${i < nik.length ? ' filled' : ''}`}
+            style={{
+              background: i < nik.length ? tone.icon : '#e2e8f0',
+              // Gap visual setelah digit ke-nikMin sebagai penanda "NIK minimum tercapai"
+              // Hanya ditampilkan jika nikMin < nikMax (NIK variabel)
+              marginRight: nikMin < nikMax && i === nikMin - 1 ? 8 : undefined,
+            }}
+          />
         ))}
       </div>
-      
+
       {/* ── Hint Text ───────────────────────────────────────── */}
       <div className="nik-hint" style={{ color: isTimeValid ? '#64748b' : '#9ca3af' }}>
-        {nik.length}/8 digit — {isTimeValid ? 'otomatis lanjut' : 'quiz tidak tersedia'}
+        {!isTimeValid
+          ? `${nik.length}/${nikMax} digit — quiz tidak tersedia`
+          : nik.length === nikMax
+          ? `${nik.length}/${nikMax} digit — otomatis mencari...`
+          : nik.length >= nikMin
+          ? nikMin < nikMax
+            // NIK variabel (misal CTPAT): sudah valid, bisa lanjut atau tekan Cari
+            ? `${nik.length}/${nikMax} digit — NIK valid, tekan Cari atau lanjut mengetik`
+            // NIK fix tapi entah kenapa belum nikMax (edge case)
+            : `${nik.length}/${nikMax} digit — lanjutkan mengetik`
+          : `${nik.length}/${nikMax} digit — minimal ${nikMin} digit`}
       </div>
-  
+
+      {/* ── Tombol Cari Manual ────────────────────────────────── */}
+      {/* Hanya muncul untuk quiz dengan NIK variabel (nikMin < nikMax) */}
+      {/* dan saat NIK sudah >= nikMin tapi belum nikMax */}
+      {showManualSearch && (
+        <button
+          onClick={handleManualSearch}
+          style={{
+            marginTop: 14,
+            width: '100%',
+            padding: '11px 0',
+            borderRadius: 12,
+            border: `1.5px solid ${tone.border}`,
+            background: tone.icon,
+            color: 'white',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+          onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+            <circle cx="11" cy="11" r="8" />
+            <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
+          </svg>
+          Cari NIK
+        </button>
+      )}
+
       {/* ─ Loading Skeleton (Saat verifikasi NIK) ───────────── */}
       {searching && (
-        <div style={{marginTop:20,display:'flex',flexDirection:'column',gap:8}}>
-          {[0.7,0.5,0.6].map((w,i) => (
-            <div key={i} style={{height:10,borderRadius:99,background:'#F0F1F5',width:`${w*100}%`,animation:'pulse 1.5s ease-in-out infinite',animationDelay:`${i*0.15}s`}} />
+        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[0.7, 0.5, 0.6].map((w, i) => (
+            <div key={i} style={{
+              height: 10, borderRadius: 99, background: '#F0F1F5',
+              width: `${w * 100}%`,
+              animation: 'pulse 1.5s ease-in-out infinite',
+              animationDelay: `${i * 0.15}s`
+            }} />
           ))}
         </div>
       )}
-  
+
       {/* ── Error Message ────────────────────────────────────── */}
       {error && !searching && (
         <div style={{
-          marginTop:16,
-          padding:'12px 16px',
-          background:'#FEF2F2',
-          border:'1px solid #FECACA',
-          borderRadius:12,
-          color:'#B91C1C',
-          fontSize:13
+          marginTop: 16,
+          padding: '12px 16px',
+          background: '#FEF2F2',
+          border: '1px solid #FECACA',
+          borderRadius: 12,
+          color: '#B91C1C',
+          fontSize: 13
         }}>
           ⚠️ {error}
         </div>
       )}
-
-      {/* ✅ NO SUBMIT BUTTON - Auto-proceed when NIK complete */}
-      {/* ✅ FIX: HAPUS hint "memproses" yang muncul sebelum searching */}
     </div>
   )
 }

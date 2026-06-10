@@ -17,24 +17,19 @@ import {
   type Question,
   type ScoreResult,
 } from '@/components/public/quiz'
-import MateriCtpat from '@/pages/public/materi/MateriCtpat'
+import MateriCompanyProfile from '@/pages/public/materi/MateriCompany'
 
-const TRAINING_CODE = 'CTPAT'
-
-// CTPAT mendukung NIK 8–15 digit (ada karyawan dengan NIK 8 digit dan ada 10–15)
-// Quiz lain cukup NIK_MIN = NIK_MAX = 8
-const NIK_MIN = 8
-const NIK_MAX = 15
+const TRAINING_CODE = 'COMPANY_PROFILE'
 
 const QUIZ_CONFIG = {
   code: TRAINING_CODE,
-  title: 'Quiz CTPAT',
-  subtitle: 'C-TPAT Security Awareness',
+  title: 'Quiz Company Profile',
+  subtitle: 'Mengenal Zinus Indonesia',
 } as const
 
 type Phase = 'nik' | 'pretest' | 'materi' | 'posttest'
 
-export default function CtpatQuiz() {
+export default function CompanyQuiz() {
   const [phase, setPhase]           = useState<Phase>('nik')
   const [nik, setNik]               = useState('')
   const [employee, setEmployee]     = useState<Employee | null>(null)
@@ -98,7 +93,7 @@ export default function CtpatQuiz() {
 
     const { data, error: qError } = await supabase
       .from('bank_soal')
-      .select('id,question_number,question_text,type,options,correct_answer')
+      .select('id, question_number, question_text, type, options, correct_answer')
       .eq('training_type_id', training.id)
       .eq('is_active', true)
       .eq('test_type', testType)
@@ -111,8 +106,7 @@ export default function CtpatQuiz() {
 
   // ── Fetch Employee & Validate Factory ────────────────────────
   const fetchEmployee = useCallback(async (searchNik: string) => {
-    // Validasi panjang NIK: harus antara NIK_MIN dan NIK_MAX
-    if (searchNik.length < NIK_MIN || searchNik.length > NIK_MAX) {
+    if (searchNik.length !== 8) {
       setEmployee(null)
       setPreQuestions([])
       setPostQuestions([])
@@ -123,25 +117,16 @@ export default function CtpatQuiz() {
     setError('')
 
     try {
-      const { data: employees, error: dbError } = await supabase
+      const { data, error: dbError } = await supabase
         .from('karyawan')
-        .select('nik,nama,department,factory')
+        .select('nik, nama, department, factory')
         .eq('nik', searchNik.trim())
-        .limit(1);
+        .single()
 
-      if (dbError) throw dbError;
-
-      const data = employees?.[0];
-
-      if (!data) {
+      if (dbError || !data) {
         setEmployee(null)
         setPreQuestions([])
         setPostQuestions([])
-
-        // Tampilkan error hanya jika NIK sudah di panjang maksimal (15),
-        // atau jika user submit manual (NIK 8–14 digit via tombol Cari).
-        // Dalam kedua kasus, kita tampilkan error karena user sudah
-        // secara eksplisit "selesai" memasukkan NIK mereka.
         setError('NIK tidak ditemukan. Periksa kembali nomor Anda.')
         setShowErrorModal(true)
         return
@@ -181,7 +166,7 @@ export default function CtpatQuiz() {
       // 2. CEK PRE-TEST: Jika sudah pernah, bypass ke Materi
       const { data: preTestRecord, error: preError } = await supabase
         .from('hasil_ujian')
-        .select('score,total_questions,correct_count')
+        .select('score, total_questions, correct_count')
         .eq('nik', data.nik)
         .eq('training_type_id', training.id)
         .eq('test_type', 'pre')
@@ -226,6 +211,13 @@ export default function CtpatQuiz() {
       setSearching(false)
     }
   }, [quizSchedule, loadQuestions])
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (nik.length === 8) fetchEmployee(nik)
+    }, 500)
+    return () => clearTimeout(t)
+  }, [nik, fetchEmployee])
 
   // ── Submit Pre-Test → pindah ke Materi ───────────────────────
   const handleSubmitPre = async () => {
@@ -364,9 +356,6 @@ export default function CtpatQuiz() {
               quizName={QUIZ_CONFIG.title}
               quizSchedule={quizSchedule}
               scheduleLoading={scheduleLoading}
-              // CTPAT: NIK bisa 8 hingga 15 digit
-              nikMin={NIK_MIN}
-              nikMax={NIK_MAX}
               nik={nik}
               onChange={setNik}
               onSubmit={fetchEmployee}
@@ -403,7 +392,7 @@ export default function CtpatQuiz() {
           )}
 
           {phase === 'materi' && (
-            <MateriCtpat
+            <MateriCompanyProfile
               employeeName={employee?.nama}
               onSelesai={() => {
                 setPhase('posttest')

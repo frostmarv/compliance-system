@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage'
 import QuizPage from './pages/public/QuizPage'
 import Quiz5R from './pages/public/quiz/5r/5R'
 import CtpatQuiz from './pages/public/quiz/ctpat/Ctpat'
+import CompanyQuiz from './pages/public/quiz/company/Company'
 import ViewPage from './pages/public/view/ViewPage'
 import TrainingViewPage from './pages/public/view/TrainingViewPage'
 
@@ -26,6 +27,7 @@ function App() {
         <Route path="/quiz" element={<QuizPage />} />
         <Route path="/quiz/5r" element={<Quiz5R />} />
         <Route path="/quiz/ctpat" element={<CtpatQuiz />} />
+        <Route path="/quiz/company" element={<CompanyQuiz />} />
         <Route path="/view" element={<ViewPage />} />
         <Route path="/view/:trainingCode" element={<TrainingViewPage />} />
 

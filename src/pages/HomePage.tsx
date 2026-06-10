@@ -2,713 +2,423 @@ import { useNavigate } from 'react-router-dom'
 import hyundaiLogo from '@/assets/hyundai-ori-hitam.png'
 import zinusLogo from '@/assets/zinus-tulisan-putih-contour.webp'
 
+// ── Inline SVG Icons ─────────────────────────────────────────────────────────
+
+const IconLogin = () => (
+  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+  </svg>
+)
+
+const IconClipboard = ({ size = 22 }) => (
+  <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h4" />
+  </svg>
+)
+
+const IconLock = () => (
+  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+  </svg>
+)
+
+const IconArrowRight = ({ size = 17 }) => (
+  <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+  </svg>
+)
+
+const IconChevronRight = () => (
+  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+  </svg>
+)
+
+const IconTrophy = () => (
+  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M8 21h8m-4-4v4M5 3H3a2 2 0 000 4c0 3.314 2.686 6 6 6h6c3.314 0 6-2.686 6-6a2 2 0 000-4h-2M5 3h14M5 3v5" />
+  </svg>
+)
+
+const IconFactory = () => (
+  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M3 21h18M3 7v14M9 3v18M15 7v14M21 7v14M3 7l6-4 6 4 6-4" />
+  </svg>
+)
+
+const IconUsers = () => (
+  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+)
+
+const IconCheck = () => (
+  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
+// ── Quiz categories data ─────────────────────────────────────────────────────
+const QUIZ_CATEGORIES = [
+  { name: 'Training 5S',            count: '10 soal', color: '#329F96' },
+  { name: 'Pengelolaan Limbah B3',  count: '15 soal', color: '#0ea5e9' },
+]
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function HomePage() {
   const navigate = useNavigate()
 
   return (
-    <>
+    <div className="font-sans min-h-screen bg-[#f5fafa] text-[#1a2e2d] overflow-x-hidden">
+
+      {/* ── Navbar ───────────────────────────────────────────────────────────── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 h-16
+                      bg-white/90 backdrop-blur-md border-b border-[#329F96]/10 shadow-sm">
+        {/* Logos: Zinus | Hyundai */}
+        <div className="flex items-center gap-4">
+          <img src={zinusLogo}   alt="Zinus"   className="h-6 w-auto object-contain" />
+          <div className="w-px h-6 bg-[#329F96]/25" />
+          <img src={hyundaiLogo} alt="Hyundai" className="h-8 w-auto object-contain" />
+        </div>
+
+        <button
+          onClick={() => navigate('/admin/login')}
+          className="flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-semibold text-white
+                     bg-gradient-to-r from-[#1a7a73] to-[#2ab5aa]
+                     shadow-[0_4px_14px_rgba(50,159,150,0.35)]
+                     hover:-translate-y-px hover:shadow-[0_6px_20px_rgba(50,159,150,0.45)]
+                     active:scale-[0.97] transition-all duration-150"
+        >
+          <IconLogin />
+          Login Admin
+        </button>
+      </nav>
+
+      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
+      <section className="relative pt-16 min-h-screen flex items-center overflow-hidden">
+        {/* Background blobs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0"
+            style={{
+              background: `
+                radial-gradient(ellipse 80% 60% at 70% 40%, rgba(50,159,150,0.18) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 50% at 10% 80%, rgba(26,122,115,0.12) 0%, transparent 55%),
+                #f5fafa`
+            }}
+          />
+          {/* Dot grid */}
+          <div className="absolute inset-0 opacity-60"
+            style={{
+              backgroundImage: 'radial-gradient(circle, rgba(50,159,150,0.15) 1px, transparent 1px)',
+              backgroundSize: '32px 32px',
+              maskImage: 'radial-gradient(ellipse 60% 60% at 80% 30%, black 0%, transparent 70%)',
+            }}
+          />
+          {/* Rings */}
+          {[
+            'w-[520px] h-[520px] -top-20 -right-24',
+            'w-[340px] h-[340px] top-14 right-10',
+            'w-[180px] h-[180px] top-40 right-44',
+          ].map((cls, i) => (
+            <div key={i}
+              className={`absolute rounded-full border border-[#329F96]/[0.12] ${cls}`}
+            />
+          ))}
+        </div>
+
+        <div className="relative z-10 w-full max-w-[1100px] mx-auto px-6 md:px-10
+                        py-20 grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center">
+
+          {/* ── Left ─────────────────────────────────────────────────────────── */}
+          <div className="flex flex-col gap-7">
+            {/* Tag */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full w-fit
+                            bg-[#329F96]/10 border border-[#329F96]/20
+                            animate-[fadeUp_0.6s_ease_both]">
+              <span className="w-2 h-2 rounded-full bg-[#329F96] animate-pulse" />
+              <span className="text-[11px] font-bold tracking-widest uppercase text-[#1a7a73]">
+                Platform Training Internal
+              </span>
+            </div>
+
+            {/* Heading */}
+            <h1 className="font-serif text-[clamp(32px,4.5vw,54px)] leading-[1.1] text-[#0d2220]
+                           animate-[fadeUp_0.6s_0.1s_ease_both]">
+              Platform Peningkatan<br />
+              <span className="italic text-[#329F96]">Kompetensi</span><br />
+              Karyawan
+            </h1>
+
+            {/* Description */}
+            <p className="text-[15px] leading-relaxed text-[#4a6b69] max-w-[460px]
+                          animate-[fadeUp_0.6s_0.2s_ease_both]">
+              Ujian evaluasi online untuk mengukur pemahaman karyawan Hyundai &amp; Zinus
+              terhadap materi training — mulai dari 5S, Pengelolaan Limbah B3, hingga K3.
+            </p>
+
+            {/* Actions */}
+            <div className="flex flex-wrap items-center gap-4 animate-[fadeUp_0.6s_0.3s_ease_both]">
+              <button
+                onClick={() => navigate('/quiz')}
+                className="flex items-center gap-2.5 px-8 py-3.5 rounded-full text-[15px] font-semibold text-white
+                           bg-gradient-to-br from-[#1a7a73] to-[#2ab5aa]
+                           shadow-[0_8px_28px_rgba(50,159,150,0.40)]
+                           hover:-translate-y-0.5 hover:shadow-[0_12px_36px_rgba(50,159,150,0.50)]
+                           active:scale-[0.97] transition-all duration-150"
+              >
+                <IconClipboard size={17} />
+                Mulai Ujian Evaluasi
+              </button>
+              <button
+                onClick={() => navigate('/admin/login')}
+                className="flex items-center gap-2 px-7 py-3.5 rounded-full text-[15px] font-semibold
+                           bg-white text-[#1a7a73]
+                           border border-[#329F96]/30 shadow-sm
+                           hover:border-[#329F96] hover:shadow-[0_4px_18px_rgba(50,159,150,0.18)]
+                           hover:-translate-y-px active:scale-[0.97] transition-all duration-150"
+              >
+                <IconLock />
+                Admin Portal
+              </button>
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center gap-8 pt-2 animate-[fadeUp_0.6s_0.4s_ease_both]">
+              {[
+                { num: '2',   label: 'Kategori Training' },
+                { num: '25+', label: 'Soal Tersedia'     },
+                { num: '2',   label: 'Factory'           },
+              ].map((s, i) => (
+                <div key={i} className="flex items-center gap-8">
+                  {i > 0 && <div className="w-px h-10 bg-[#329F96]/15" />}
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-serif text-[26px] leading-none text-[#0f5c57]">{s.num}</span>
+                    <span className="text-[11px] font-medium text-[#7a9997]">{s.label}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Right — Card Stack (hidden on mobile) ────────────────────────── */}
+          <div className="hidden md:flex items-center justify-center animate-[fadeUp_0.7s_0.2s_ease_both]">
+            <div className="relative w-[360px] h-[430px]">
+              {/* Back cards */}
+              <div className="absolute w-[300px] h-[180px] rounded-[20px] top-10 right-0
+                              bg-gradient-to-br from-[#1a7a73] to-[#2ab5aa] opacity-25
+                              rotate-6 translate-x-8" />
+              <div className="absolute w-[300px] h-[180px] rounded-[20px] top-28 right-5
+                              bg-gradient-to-br from-[#329F96] to-[#1a7a73] opacity-15
+                              -rotate-[4deg] -translate-x-5" />
+
+              {/* Main card */}
+              <div className="absolute top-5 left-0 right-0 z-10 bg-white rounded-3xl p-7
+                              shadow-[0_20px_60px_rgba(0,0,0,0.10),0_4px_16px_rgba(50,159,150,0.12)]">
+                {/* Card header */}
+                <div className="flex items-center justify-between mb-5">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#1a7a73] to-[#2ab5aa]
+                                  flex items-center justify-center text-white">
+                    <IconClipboard size={20} />
+                  </div>
+                  <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-[#e6f7f6] text-[#1a7a73] tracking-wide">
+                    AKTIF
+                  </span>
+                </div>
+
+                <p className="font-serif text-[17px] text-[#0d2220] mb-1">Pilih Ujian Evaluasi</p>
+                <p className="text-[12px] text-[#7a9997] mb-5">Tersedia untuk seluruh karyawan</p>
+
+                {/* Quiz list */}
+                <div className="flex flex-col gap-2.5">
+                  {QUIZ_CATEGORIES.map((q) => (
+                    <button
+                      key={q.name}
+                      onClick={() => navigate('/quiz')}
+                      className="flex items-center gap-3 px-3.5 py-3 rounded-xl text-left
+                                 bg-[#f5fafa] border border-[#329F96]/10
+                                 hover:bg-[#e6f7f6] hover:border-[#329F96]/25 transition-colors duration-150"
+                    >
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: q.color }} />
+                      <span className="flex-1 text-[13px] font-semibold text-[#1a2e2d]">{q.name}</span>
+                      <span className="text-[11px] text-[#99bfbd]">{q.count}</span>
+                      <span className="w-6 h-6 rounded-lg bg-white shadow-sm
+                                       flex items-center justify-center text-[#329F96]">
+                        <IconChevronRight />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Progress */}
+                <div className="mt-5">
+                  <div className="flex justify-between text-[11px] text-[#99bfbd] mb-1.5">
+                    <span>Partisipasi bulan ini</span>
+                    <span>72%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-[#e6f7f6] overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#1a7a73] to-[#2ab5aa]
+                                    animate-[growBar_1.2s_0.8s_ease_both]"
+                      style={{ width: '72%' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating score card */}
+              <div className="absolute bottom-0 right-0 z-20 bg-white rounded-2xl px-4 py-3.5
+                              shadow-[0_8px_32px_rgba(0,0,0,0.10)]
+                              flex items-center gap-3
+                              animate-[float_3s_ease-in-out_infinite]">
+                <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-amber-400 to-orange-400
+                                flex items-center justify-center text-white">
+                  <IconTrophy />
+                </div>
+                <div>
+                  <p className="text-[11px] text-[#99bfbd]">Rata-rata Skor</p>
+                  <strong className="text-[15px] font-bold text-[#0d2220]">84.5</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Quiz CTA section (mobile-friendly cards) ─────────────────────────── */}
+      <section className="max-w-[1100px] mx-auto px-6 md:px-10 py-16 md:py-24">
+        <p className="text-center text-[11px] font-bold tracking-[2px] uppercase text-[#329F96] mb-3">
+          Ujian Evaluasi
+        </p>
+        <h2 className="font-serif text-[clamp(24px,3.5vw,38px)] text-center text-[#0d2220] mb-12 leading-snug">
+          Pilih materi yang ingin<br className="hidden sm:block" /> kamu ujikan hari ini
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {[
+            {
+              name: 'Training 5S',
+              desc: 'Evaluasi pemahaman konsep Sort, Set in Order, Shine, Standardize, dan Sustain di area kerja.',
+              count: '10 soal',
+              color: '#329F96',
+              gradient: 'from-[#0f5c57] to-[#2ab5aa]',
+              icon: <IconCheck />,
+            },
+            {
+              name: 'Pengelolaan Limbah B3',
+              desc: 'Uji pengetahuan tentang identifikasi, penyimpanan, dan penanganan limbah bahan berbahaya beracun.',
+              count: '15 soal',
+              color: '#0ea5e9',
+              gradient: 'from-[#0369a1] to-[#38bdf8]',
+              icon: <IconFactory />,
+            },
+          ].map((q) => (
+            <button
+              key={q.name}
+              onClick={() => navigate('/quiz')}
+              className="group text-left p-7 rounded-2xl bg-white border border-[#329F96]/10
+                         shadow-[0_2px_16px_rgba(0,0,0,0.05)]
+                         hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(50,159,150,0.14)]
+                         active:scale-[0.98] transition-all duration-200"
+            >
+              <div className={`w-12 h-12 rounded-[14px] bg-gradient-to-br ${q.gradient}
+                               flex items-center justify-center text-white mb-5`}>
+                {q.icon}
+              </div>
+              <p className="font-serif text-[18px] text-[#0d2220] mb-2">{q.name}</p>
+              <p className="text-[13.5px] text-[#6b8f8d] leading-relaxed mb-5">{q.desc}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-semibold px-3 py-1 rounded-full"
+                  style={{ background: `${q.color}18`, color: q.color }}>
+                  {q.count}
+                </span>
+                <span className="flex items-center gap-1.5 text-[13px] font-semibold text-[#1a7a73]
+                                 group-hover:gap-3 transition-all duration-200">
+                  Mulai Ujian <IconArrowRight size={14} />
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* All-quiz CTA */}
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={() => navigate('/quiz')}
+            className="flex items-center gap-3 px-8 py-4 rounded-full
+                       bg-gradient-to-r from-[#1a7a73] to-[#2ab5aa] text-white
+                       text-[15px] font-semibold
+                       shadow-[0_8px_28px_rgba(50,159,150,0.35)]
+                       hover:-translate-y-0.5 hover:shadow-[0_12px_36px_rgba(50,159,150,0.45)]
+                       active:scale-[0.97] transition-all duration-150"
+          >
+            <IconClipboard size={18} />
+            Lihat Semua Ujian
+            <IconArrowRight />
+          </button>
+        </div>
+      </section>
+
+      {/* ── Info strip ───────────────────────────────────────────────────────── */}
+      <div className="border-y border-[#329F96]/10 bg-white">
+        <div className="max-w-[1100px] mx-auto px-6 md:px-10 py-6
+                        grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-0 text-center">
+          {[
+            { icon: <IconUsers />,    label: 'Semua karyawan dapat mengikuti ujian tanpa perlu akun' },
+            { icon: <IconCheck />,    label: 'Hasil langsung ditampilkan setelah ujian selesai'         },
+            { icon: <IconFactory />,  label: 'Tersedia untuk Factory 1 dan Factory 2'                  },
+          ].map((item, i) => (
+            <div key={i} className={`flex flex-col items-center gap-2 px-6
+                                     ${i < 2 ? 'sm:border-r border-[#329F96]/10' : ''}`}>
+              <span className="text-[#329F96]">{item.icon}</span>
+              <p className="text-[12.5px] text-[#6b8f8d] leading-relaxed">{item.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Footer ───────────────────────────────────────────────────────────── */}
+      <footer className="border-t border-[#329F96]/10 py-8 px-6 md:px-10">
+        <div className="max-w-[1100px] mx-auto flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <img src={zinusLogo}   alt="Zinus"   className="h-5 object-contain opacity-60" />
+            <div className="w-px h-5 bg-[#329F96]/20" />
+            <img src={hyundaiLogo} alt="Hyundai" className="h-7 object-contain opacity-60" />
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] text-[#99bfbd]">
+              © {new Date().getFullYear()} Compliance — Zinus Indonesia.
+            </p>
+            <p className="text-[10px] text-[#b5d2d0] mt-0.5">
+              Developed by Nurmalik Wijaya
+            </p>
+          </div>
+        </div>
+      </footer>
+
+      {/* ── Global keyframes ─────────────────────────────────────────────────── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-        :root {
-          --teal-deep: #0f5c57;
-          --teal-mid:  #1a7a73;
-          --teal-main: #329F96;
-          --teal-light:#2ab5aa;
-          --teal-pale: #e6f7f6;
-        }
-
-        .home-root {
-          font-family: 'DM Sans', sans-serif;
-          min-height: 100vh;
-          background: #f5fafa;
-          color: #1a2e2d;
-          overflow-x: hidden;
-        }
-
-        /* ── Navbar ─────────────────────────────────── */
-        .navbar {
-          position: fixed;
-          top: 0; left: 0; right: 0;
-          z-index: 100;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0 40px;
-          height: 68px;
-          background: rgba(255,255,255,0.88);
-          backdrop-filter: blur(16px);
-          border-bottom: 1px solid rgba(50,159,150,0.12);
-          box-shadow: 0 2px 20px rgba(0,0,0,0.05);
-        }
-
-        .navbar-logos {
-          display: flex;
-          align-items: center;
-          gap: 20px;
-        }
-
-        .navbar-logos img.hyundai {
-          height: 36px;
-          width: auto;
-          object-fit: contain;
-        }
-
-        .navbar-divider {
-          width: 1px;
-          height: 28px;
-          background: #329F9640;
-        }
-
-        .navbar-logos img.zinus {
-          height: 28px;
-          width: auto;
-          object-fit: contain;
-        }
-
-        .nav-login-btn {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 9px 22px;
-          border-radius: 50px;
-          font-size: 13.5px;
-          font-weight: 600;
-          font-family: 'DM Sans', sans-serif;
-          letter-spacing: 0.2px;
-          cursor: pointer;
-          border: none;
-          background: linear-gradient(135deg, var(--teal-mid), var(--teal-light));
-          color: white;
-          transition: transform 0.15s, box-shadow 0.15s;
-          box-shadow: 0 4px 14px rgba(50,159,150,0.35);
-        }
-        .nav-login-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(50,159,150,0.45);
-        }
-        .nav-login-btn:active { transform: scale(0.97); }
-
-        /* ── Hero ───────────────────────────────────── */
-        .hero {
-          padding-top: 68px;
-          min-height: 100vh;
-          position: relative;
-          display: flex;
-          align-items: center;
-          overflow: hidden;
-        }
-
-        /* Big background gradient mesh */
-        .hero-bg {
-          position: absolute;
-          inset: 0;
-          background:
-            radial-gradient(ellipse 80% 60% at 70% 40%, rgba(50,159,150,0.18) 0%, transparent 60%),
-            radial-gradient(ellipse 50% 50% at 10% 80%, rgba(26,122,115,0.12) 0%, transparent 55%),
-            #f5fafa;
-        }
-
-        /* Decorative rings */
-        .ring {
-          position: absolute;
-          border-radius: 50%;
-          border: 1.5px solid rgba(50,159,150,0.12);
-          pointer-events: none;
-        }
-        .ring-1 { width: 520px; height: 520px; top: -80px; right: -100px; }
-        .ring-2 { width: 340px; height: 340px; top: 60px; right: 40px; }
-        .ring-3 { width: 180px; height: 180px; top: 160px; right: 180px; border-color: rgba(50,159,150,0.2); }
-
-        /* Grid dot pattern */
-        .dot-grid {
-          position: absolute;
-          inset: 0;
-          background-image: radial-gradient(circle, rgba(50,159,150,0.15) 1px, transparent 1px);
-          background-size: 32px 32px;
-          opacity: 0.6;
-          pointer-events: none;
-          mask-image: radial-gradient(ellipse 60% 60% at 80% 30%, black 0%, transparent 70%);
-        }
-
-        .hero-inner {
-          position: relative;
-          z-index: 2;
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 80px 40px;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 60px;
-          align-items: center;
-          width: 100%;
-        }
-
-        /* ── Hero Left ──────────────────────────────── */
-        .hero-left { display: flex; flex-direction: column; gap: 28px; }
-
-        .hero-tag {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 14px 6px 8px;
-          border-radius: 50px;
-          background: rgba(50,159,150,0.1);
-          border: 1px solid rgba(50,159,150,0.2);
-          width: fit-content;
-          animation: fadeUp 0.6s ease both;
-        }
-        .hero-tag-dot {
-          width: 8px; height: 8px;
-          border-radius: 50%;
-          background: var(--teal-main);
-          animation: pulse-dot 2s infinite;
-        }
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(0.85); }
-        }
-        .hero-tag span {
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--teal-mid);
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-        }
-
-        .hero-title {
-          font-family: 'DM Serif Display', serif;
-          font-size: clamp(36px, 4.5vw, 56px);
-          line-height: 1.1;
-          color: #0d2220;
-          animation: fadeUp 0.6s 0.1s ease both;
-        }
-        .hero-title em {
-          font-style: italic;
-          color: var(--teal-main);
-        }
-
-        .hero-desc {
-          font-size: 16px;
-          line-height: 1.7;
-          color: #4a6b69;
-          max-width: 460px;
-          animation: fadeUp 0.6s 0.2s ease both;
-        }
-
-        .hero-actions {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          flex-wrap: wrap;
-          animation: fadeUp 0.6s 0.3s ease both;
-        }
-
-        .btn-primary {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 14px 32px;
-          border-radius: 50px;
-          font-size: 15px;
-          font-weight: 600;
-          font-family: 'DM Sans', sans-serif;
-          cursor: pointer;
-          border: none;
-          background: linear-gradient(135deg, var(--teal-mid) 0%, var(--teal-light) 100%);
-          color: white;
-          box-shadow: 0 8px 28px rgba(50,159,150,0.40);
-          transition: transform 0.15s, box-shadow 0.15s;
-        }
-        .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 12px 36px rgba(50,159,150,0.50);
-        }
-        .btn-primary:active { transform: scale(0.97); }
-
-        .btn-secondary {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 14px 28px;
-          border-radius: 50px;
-          font-size: 15px;
-          font-weight: 600;
-          font-family: 'DM Sans', sans-serif;
-          cursor: pointer;
-          background: white;
-          color: var(--teal-mid);
-          border: 1.5px solid rgba(50,159,150,0.3);
-          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-          transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
-        }
-        .btn-secondary:hover {
-          border-color: var(--teal-main);
-          box-shadow: 0 4px 18px rgba(50,159,150,0.18);
-          transform: translateY(-1px);
-        }
-
-        /* Stats row */
-        .hero-stats {
-          display: flex;
-          gap: 32px;
-          padding-top: 8px;
-          animation: fadeUp 0.6s 0.4s ease both;
-        }
-        .stat-item { display: flex; flex-direction: column; gap: 2px; }
-        .stat-num {
-          font-family: 'DM Serif Display', serif;
-          font-size: 28px;
-          color: var(--teal-deep);
-          line-height: 1;
-        }
-        .stat-label { font-size: 12px; color: #7a9997; font-weight: 500; }
-        .stat-sep { width: 1px; background: rgba(50,159,150,0.15); align-self: stretch; }
-
-        /* ── Hero Right — Feature Card Stack ───────── */
-        .hero-right {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          animation: fadeUp 0.7s 0.2s ease both;
-        }
-
-        .card-stack {
-          position: relative;
-          width: 360px;
-          height: 420px;
-        }
-
-        .card-back {
-          position: absolute;
-          width: 300px;
-          height: 180px;
-          border-radius: 20px;
-          background: linear-gradient(135deg, #1a7a73, #2ab5aa);
-          opacity: 0.25;
-          transform: rotate(6deg) translateX(30px);
-          top: 40px;
-          right: 0;
-        }
-        .card-back-2 {
-          position: absolute;
-          width: 300px;
-          height: 180px;
-          border-radius: 20px;
-          background: linear-gradient(135deg, #329F96, #1a7a73);
-          opacity: 0.15;
-          transform: rotate(-4deg) translateX(-20px);
-          top: 120px;
-          right: 20px;
-        }
-
-        .card-main {
-          position: absolute;
-          top: 20px;
-          left: 0;
-          right: 0;
-          background: white;
-          border-radius: 24px;
-          padding: 28px;
-          box-shadow:
-            0 20px 60px rgba(0,0,0,0.10),
-            0 4px 16px rgba(50,159,150,0.12);
-          z-index: 2;
-        }
-
-        .card-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 20px;
-        }
-        .card-icon {
-          width: 44px; height: 44px;
-          border-radius: 12px;
-          background: linear-gradient(135deg, var(--teal-mid), var(--teal-light));
-          display: flex; align-items: center; justify-content: center;
-          color: white;
-        }
-        .card-badge {
-          font-size: 11px;
-          font-weight: 700;
-          padding: 4px 10px;
-          border-radius: 50px;
-          background: #e6f7f6;
-          color: var(--teal-mid);
-          letter-spacing: 0.3px;
-        }
-
-        .card-title {
-          font-family: 'DM Serif Display', serif;
-          font-size: 18px;
-          color: #0d2220;
-          margin-bottom: 6px;
-        }
-        .card-sub { font-size: 13px; color: #7a9997; margin-bottom: 20px; }
-
-        .card-quiz-list { display: flex; flex-direction: column; gap: 10px; }
-        .quiz-item {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px 14px;
-          border-radius: 12px;
-          background: #f5fafa;
-          border: 1px solid rgba(50,159,150,0.1);
-          cursor: pointer;
-          transition: background 0.15s, border-color 0.15s;
-        }
-        .quiz-item:hover { background: #e6f7f6; border-color: rgba(50,159,150,0.25); }
-        .quiz-dot {
-          width: 8px; height: 8px; border-radius: 50%;
-          background: var(--teal-main); flex-shrink: 0;
-        }
-        .quiz-item-name { font-size: 13.5px; font-weight: 600; color: #1a2e2d; flex: 1; }
-        .quiz-item-count { font-size: 11px; color: #99bfbd; }
-        .quiz-arrow {
-          width: 24px; height: 24px; border-radius: 8px;
-          background: white;
-          display: flex; align-items: center; justify-content: center;
-          color: var(--teal-main);
-          box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-        }
-
-        /* Progress bar mini */
-        .card-progress { margin-top: 16px; }
-        .progress-label {
-          display: flex; justify-content: space-between;
-          font-size: 11px; color: #99bfbd; margin-bottom: 6px;
-        }
-        .progress-bar-bg {
-          height: 6px; border-radius: 50px;
-          background: #e6f7f6; overflow: hidden;
-        }
-        .progress-bar-fill {
-          height: 100%; border-radius: 50px;
-          background: linear-gradient(90deg, var(--teal-mid), var(--teal-light));
-          width: 72%;
-          animation: growBar 1.2s 0.8s ease both;
-          transform-origin: left;
-        }
-        @keyframes growBar {
-          from { width: 0; }
-          to { width: 72%; }
-        }
-
-        /* Floating mini card */
-        .card-float {
-          position: absolute;
-          bottom: 0;
-          right: 0;
-          background: white;
-          border-radius: 16px;
-          padding: 14px 18px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.10);
-          z-index: 3;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          animation: float 3s ease-in-out infinite;
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
-        }
-        .float-icon {
-          width: 36px; height: 36px; border-radius: 10px;
-          background: linear-gradient(135deg, #f59e0b, #f97316);
-          display: flex; align-items: center; justify-content: center;
-          color: white; font-size: 16px;
-        }
-        .float-text p { font-size: 11px; color: #99bfbd; }
-        .float-text strong { font-size: 15px; font-weight: 700; color: #0d2220; }
-
-        /* ── Features Section ───────────────────────── */
-        .features {
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 80px 40px;
-        }
-
-        .section-label {
-          text-align: center;
-          font-size: 12px;
-          font-weight: 700;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          color: var(--teal-main);
-          margin-bottom: 14px;
-        }
-
-        .section-title {
-          font-family: 'DM Serif Display', serif;
-          font-size: clamp(28px, 3.5vw, 42px);
-          text-align: center;
-          color: #0d2220;
-          margin-bottom: 48px;
-          line-height: 1.2;
-        }
-
-        .features-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 24px;
-        }
-
-        .feature-card {
-          padding: 28px;
-          border-radius: 20px;
-          background: white;
-          border: 1px solid rgba(50,159,150,0.1);
-          box-shadow: 0 2px 16px rgba(0,0,0,0.05);
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .feature-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 12px 32px rgba(50,159,150,0.14);
-        }
-        .feature-icon {
-          width: 48px; height: 48px;
-          border-radius: 14px;
-          display: flex; align-items: center; justify-content: center;
-          margin-bottom: 18px;
-          font-size: 22px;
-        }
-        .feature-card h3 {
-          font-family: 'DM Serif Display', serif;
-          font-size: 18px;
-          color: #0d2220;
-          margin-bottom: 8px;
-        }
-        .feature-card p { font-size: 14px; color: #6b8f8d; line-height: 1.65; }
-
-        /* ── Footer ─────────────────────────────────── */
-        .footer {
-          border-top: 1px solid rgba(50,159,150,0.1);
-          padding: 32px 40px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          max-width: 1100px;
-          margin: 0 auto;
-          flex-wrap: wrap;
-          gap: 12px;
-        }
-        .footer-logos { display: flex; align-items: center; gap: 16px; }
-        .footer-logos img { height: 24px; object-fit: contain; opacity: 0.7; }
-        .footer p { font-size: 12px; color: #99bfbd; }
-
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(20px); }
           to   { opacity: 1; transform: none; }
         }
-
-        @media (max-width: 768px) {
-          .hero-inner { grid-template-columns: 1fr; gap: 40px; padding: 60px 20px; }
-          .hero-right { display: none; }
-          .features-grid { grid-template-columns: 1fr; }
-          .navbar { padding: 0 20px; }
-          .features { padding: 60px 20px; }
-          .hero-stats { gap: 20px; }
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50%       { transform: translateY(-8px); }
         }
+        @keyframes growBar {
+          from { width: 0; }
+          to   { width: 72%; }
+        }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+        .font-serif { font-family: 'DM Serif Display', serif; }
+        .font-sans  { font-family: 'DM Sans', sans-serif; }
       `}</style>
-
-      <div className="home-root">
-
-        {/* ── Navbar ─────────────────────────────────────────────── */}
-        <nav className="navbar">
-          <div className="navbar-logos">
-            <img src={hyundaiLogo} alt="Hyundai" className="hyundai" />
-            <div className="navbar-divider" />
-            <img src={zinusLogo} alt="Zinus" className="zinus" />
-          </div>
-
-          <button className="nav-login-btn" onClick={() => navigate('/admin/login')}>
-            <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-            </svg>
-            Login Admin
-          </button>
-        </nav>
-
-        {/* ── Hero ───────────────────────────────────────────────── */}
-        <section className="hero">
-          <div className="hero-bg" />
-          <div className="dot-grid" />
-          <div className="ring ring-1" />
-          <div className="ring ring-2" />
-          <div className="ring ring-3" />
-
-          <div className="hero-inner">
-            {/* Left */}
-            <div className="hero-left">
-              <div className="hero-tag">
-                <div className="hero-tag-dot" />
-                <span>Platform Training Internal</span>
-              </div>
-
-              <h1 className="hero-title">
-                Tingkatkan Kompetensi<br />
-                Karyawan dengan <em>Quiz</em><br />
-                yang Terukur
-              </h1>
-
-              <p className="hero-desc">
-                Platform ujian online internal Hyundai &amp; Zinus untuk
-                mengukur pemahaman karyawan terhadap materi training —
-                mulai dari 5S, Pengelolaan Limbah B3, hingga K3.
-              </p>
-
-              <div className="hero-actions">
-                <button className="btn-primary" onClick={() => navigate('/')}>
-                  <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  Mulai Ujian
-                </button>
-                <button className="btn-secondary" onClick={() => navigate('/admin/login')}>
-                  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  Admin Portal
-                </button>
-              </div>
-
-              <div className="hero-stats">
-                <div className="stat-item">
-                  <span className="stat-num">2</span>
-                  <span className="stat-label">Kategori Training</span>
-                </div>
-                <div className="stat-sep" />
-                <div className="stat-item">
-                  <span className="stat-num">25+</span>
-                  <span className="stat-label">Soal Tersedia</span>
-                </div>
-                <div className="stat-sep" />
-                <div className="stat-item">
-                  <span className="stat-num">2</span>
-                  <span className="stat-label">Factory</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right — Card Stack */}
-            <div className="hero-right">
-              <div className="card-stack">
-                <div className="card-back" />
-                <div className="card-back-2" />
-
-                <div className="card-main">
-                  <div className="card-header">
-                    <div className="card-icon">
-                      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 12h6M9 16h4" />
-                      </svg>
-                    </div>
-                    <span className="card-badge">AKTIF</span>
-                  </div>
-
-                  <p className="card-title">Pilih Kategori Ujian</p>
-                  <p className="card-sub">Tersedia untuk seluruh karyawan</p>
-
-                  <div className="card-quiz-list">
-                    {[
-                      { name: 'Training 5S', count: '10 soal', color: '#329F96' },
-                      { name: 'Pengelolaan Limbah B3', count: '15 soal', color: '#0ea5e9' },
-                    ].map((q) => (
-                      <div className="quiz-item" key={q.name}>
-                        <div className="quiz-dot" style={{ background: q.color }} />
-                        <span className="quiz-item-name">{q.name}</span>
-                        <span className="quiz-item-count">{q.count}</span>
-                        <div className="quiz-arrow">
-                          <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="card-progress">
-                    <div className="progress-label">
-                      <span>Partisipasi bulan ini</span>
-                      <span>72%</span>
-                    </div>
-                    <div className="progress-bar-bg">
-                      <div className="progress-bar-fill" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Floating mini card */}
-                <div className="card-float">
-                  <div className="float-icon">🏆</div>
-                  <div className="float-text">
-                    <p>Rata-rata Skor</p>
-                    <strong>84.5</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Features ───────────────────────────────────────────── */}
-        <section className="features">
-          <p className="section-label">Fitur Platform</p>
-          <h2 className="section-title">Semua yang kamu butuhkan<br />dalam satu tempat</h2>
-
-          <div className="features-grid">
-            {[
-              {
-                icon: '📋',
-                bg: 'linear-gradient(135deg, #e6f7f6, #c8efed)',
-                title: 'Bank Soal Terstruktur',
-                desc: 'Soal pilihan ganda dan YA/TIDAK untuk berbagai kategori training, dapat difilter per factory.',
-              },
-              {
-                icon: '📊',
-                bg: 'linear-gradient(135deg, #ede9fe, #ddd6fe)',
-                title: 'Hasil & Statistik Real-time',
-                desc: 'Dashboard admin dengan grafik distribusi skor, tren performa, dan rekap hasil ujian karyawan.',
-              },
-              {
-                icon: '🏭',
-                bg: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                title: 'Multi Factory',
-                desc: 'Dukungan soal per factory — Factory 1 dan Factory 2 dapat memiliki soal yang berbeda.',
-              },
-            ].map((f) => (
-              <div className="feature-card" key={f.title}>
-                <div className="feature-icon" style={{ background: f.bg }}>
-                  {f.icon}
-                </div>
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Footer ─────────────────────────────────────────────── */}
-        <footer style={{ borderTop: '1px solid rgba(50,159,150,0.1)', padding: '32px 40px' }}>
-          <div className="footer">
-            <div className="footer-logos">
-              <img src={hyundaiLogo} alt="Hyundai" />
-              <div style={{ width: 1, height: 20, background: 'rgba(50,159,150,0.2)' }} />
-              <img src={zinusLogo} alt="Zinus" />
-            </div>
-            <p style={{ fontSize: 12, color: '#99bfbd' }}>
-              © {new Date().getFullYear()} Compliance - Zinus Indonesia.
-            </p>
-            <p style={{ fontSize: 11, color: '#b5d2d0', marginTop: 4 }}>
-              Developed by Nurmalik Wijaya
-            </p>
-          </div>
-        </footer>
-
-      </div>
-    </>
+    </div>
   )
 }
