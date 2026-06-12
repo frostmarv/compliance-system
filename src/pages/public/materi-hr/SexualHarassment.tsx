@@ -20,7 +20,7 @@ export interface Employee {
   nik:        string
   nama:       string
   department: string
-  factory:    number | string
+  factory:    number | string | null
 }
 
 interface SexualHarassmentProps {
@@ -38,8 +38,9 @@ const SIGNED_URL_EXPIRES   = 120
 
 // ─── FACTORY LABEL ───────────────────────────────────────────────────────────
 
-function getFactoryLabel(factory: number | string): string {
+function getFactoryLabel(factory: number | string | null): string {
   const val = Number(factory)
+  if (!factory) return 'Zinus Global Indonesia'
   if (val === 3) return 'Zinus Dream Indonesia'
   return 'Zinus Global Indonesia' // 1 atau 2
 }

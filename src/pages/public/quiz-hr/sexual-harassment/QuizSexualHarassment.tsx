@@ -17,7 +17,7 @@ import {
   type Question,
   type ScoreResult,
 } from '@/components/public/quiz'
-import SexualHarassment from '@/pages/public/materi-hr/SexualHarrasment'
+import SexualHarassment from '@/pages/public/materi-hr/SexualHarassment'
 
 const TRAINING_CODE = 'SEXUAL_HARASSMENT'
 
