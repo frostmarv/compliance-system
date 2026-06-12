@@ -3,16 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import hyundaiLogo from '@/assets/hyundai-ori-hitam.png'
 import zinusLogo from '@/assets/zinus-tulisan-putih-contour.webp'
 
-// SVG icon components
+// ─── Icon Components ──────────────────────────────────────────────────────────
+
 const ShieldIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     <path d="M12 2L3 6.5V11C3 15.55 6.96 19.79 12 21C17.04 19.79 21 15.55 21 11V6.5L12 2Z" fill="#1a7a73" fillOpacity="0.15" stroke="#1a7a73" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M9 12L11 14L15 10" stroke="#1a7a73" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 )
 
 const ClipboardIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     <rect x="8" y="2" width="8" height="4" rx="1.5" fill="#1a7a73" fillOpacity="0.15" stroke="#1a7a73" strokeWidth="1.6"/>
     <path d="M16 3H18C19.1 3 20 3.9 20 5V20C20 21.1 19.1 22 18 22H6C4.9 22 4 21.1 4 20V5C4 3.9 4.9 3 6 3H8" stroke="#1a7a73" strokeWidth="1.6" strokeLinecap="round"/>
     <path d="M9 12H15M9 16H13" stroke="#1a7a73" strokeWidth="1.6" strokeLinecap="round"/>
@@ -20,34 +21,62 @@ const ClipboardIcon = () => (
 )
 
 const BuildingIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="3" y="7" width="18" height="14" rx="1.5" fill="#9ca3af" fillOpacity="0.12" stroke="#9ca3af" strokeWidth="1.6"/>
-    <path d="M8 22V7M16 22V7" stroke="#9ca3af" strokeWidth="1.4" strokeLinecap="round"/>
-    <rect x="9" y="11" width="2.5" height="2.5" rx="0.5" fill="#9ca3af"/>
-    <rect x="12.5" y="11" width="2.5" height="2.5" rx="0.5" fill="#9ca3af"/>
-    <rect x="9" y="15" width="2.5" height="2.5" rx="0.5" fill="#9ca3af"/>
-    <rect x="12.5" y="15" width="2.5" height="2.5" rx="0.5" fill="#9ca3af"/>
-    <path d="M8 7V4C8 3.45 8.45 3 9 3H15C15.55 3 16 3.45 16 4V7" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round"/>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <rect x="3" y="7" width="18" height="14" rx="1.5" fill="#1a7a73" fillOpacity="0.12" stroke="#1a7a73" strokeWidth="1.6"/>
+    <path d="M8 22V7M16 22V7" stroke="#1a7a73" strokeWidth="1.4" strokeLinecap="round"/>
+    <rect x="9" y="11" width="2.5" height="2.5" rx="0.5" fill="#1a7a73"/>
+    <rect x="12.5" y="11" width="2.5" height="2.5" rx="0.5" fill="#1a7a73"/>
+    <rect x="9" y="15" width="2.5" height="2.5" rx="0.5" fill="#1a7a73"/>
+    <rect x="12.5" y="15" width="2.5" height="2.5" rx="0.5" fill="#1a7a73"/>
+    <path d="M8 7V4C8 3.45 8.45 3 9 3H15C15.55 3 16 3.45 16 4V7" stroke="#1a7a73" strokeWidth="1.6" strokeLinecap="round"/>
   </svg>
 )
 
 const ScrollIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     <path d="M6 3H18C18.55 3 19 3.45 19 4V20C19 20.55 18.55 21 18 21H6C5.45 21 5 20.55 5 20V4C5 3.45 5.45 3 6 3Z" fill="#9ca3af" fillOpacity="0.12" stroke="#9ca3af" strokeWidth="1.6"/>
     <path d="M9 8H15M9 12H15M9 16H12" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round"/>
   </svg>
 )
 
 const LeafIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     <path d="M12 21C12 21 4 16 4 9.5C4 6.5 6.5 4 9.5 4C10.8 4 12 4.5 13 5.3C14 4.5 15.2 4 16.5 4C19.5 4 22 6.5 22 9.5C22 16 12 21 12 21Z" fill="#9ca3af" fillOpacity="0.12" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M12 21V12M12 12C12 12 9 10 7 8" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round"/>
   </svg>
 )
 
+const HeartShieldIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <path d="M12 21C12 21 3 15 3 9C3 6.24 5.24 4 8 4C9.6 4 11 4.8 12 6C13 4.8 14.4 4 16 4C18.76 4 21 6.24 21 9C21 15 12 21 12 21Z" fill="#be185d" fillOpacity="0.12" stroke="#be185d" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 8v4M10 10h4" stroke="#be185d" strokeWidth="1.8" strokeLinecap="round"/>
+  </svg>
+)
+
 const ChevronRight = () => (
-  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+  </svg>
+)
+
+const ChevronDown = ({ open }: { open: boolean }) => (
+  <svg
+    width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+    style={{ transition: 'transform 0.22s ease', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+  </svg>
+)
+
+const FolderComplianceIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+    <path d="M3 7C3 5.9 3.9 5 5 5H10L12 7H19C20.1 7 21 7.9 21 9V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V7Z" fill="#1a7a73" fillOpacity="0.15" stroke="#1a7a73" strokeWidth="1.5" strokeLinejoin="round"/>
+  </svg>
+)
+
+const FolderHRIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+    <path d="M3 7C3 5.9 3.9 5 5 5H10L12 7H19C20.1 7 21 7.9 21 9V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V7Z" fill="#be185d" fillOpacity="0.15" stroke="#be185d" strokeWidth="1.5" strokeLinejoin="round"/>
   </svg>
 )
 
@@ -59,8 +88,20 @@ const ClockIcon = () => (
   </svg>
 )
 
-const quizzes = [
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
+type QuizItem = {
+  name: string
+  sub: string
+  icon: React.ReactNode
+  path: string | null
+  active: boolean
+  training_type: string
+}
+
+const quizzes: QuizItem[] = [
   {
+    training_type: 'COMPLIANCE',
     name: 'C-TPAT',
     sub: 'Customs-Trade Partnership Against Terrorism',
     icon: <ShieldIcon />,
@@ -68,6 +109,7 @@ const quizzes = [
     active: true,
   },
   {
+    training_type: 'COMPLIANCE',
     name: '5R / 5S',
     sub: 'Ringkas, Rapi, Resik, Rawat, Rajin',
     icon: <ClipboardIcon />,
@@ -75,6 +117,7 @@ const quizzes = [
     active: true,
   },
   {
+    training_type: 'COMPLIANCE',
     name: 'Company Profile',
     sub: 'Pengenalan perusahaan & struktur organisasi',
     icon: <BuildingIcon />,
@@ -82,6 +125,7 @@ const quizzes = [
     active: true,
   },
   {
+    training_type: 'COMPLIANCE',
     name: 'Code of Conduct',
     sub: 'Etika & tata perilaku karyawan',
     icon: <ScrollIcon />,
@@ -89,17 +133,188 @@ const quizzes = [
     active: false,
   },
   {
+    training_type: 'COMPLIANCE',
     name: 'Kesadaran Lingkungan',
     sub: 'Pengelolaan limbah & lingkungan hidup',
     icon: <LeafIcon />,
     path: null,
     active: false,
   },
+  {
+    training_type: 'HR',
+    name: 'Sexual Harassment',
+    sub: 'Pencegahan & penanganan pelecehan di tempat kerja',
+    icon: <HeartShieldIcon />,
+    path: '/quiz-hr/sexual-harassment',
+    active: true,
+  },
 ]
 
-export default function QuizNavPage() {
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+type FolderSectionProps = {
+  label: string
+  accentColor: string        // e.g. '#1a7a73'
+  accentBg: string           // e.g. 'rgba(26,122,115,0.08)'
+  folderIcon: React.ReactNode
+  items: QuizItem[]
+  defaultOpen?: boolean
+  onComingSoon: (name: string) => void
+}
+
+function FolderSection({
+  label, accentColor, accentBg, folderIcon, items, defaultOpen = false, onComingSoon,
+}: FolderSectionProps) {
+  const [open, setOpen] = useState(defaultOpen)
   const navigate = useNavigate()
+
+  const activeCount = items.filter(i => i.active).length
+
+  return (
+    <div
+      style={{
+        border: `1.5px solid ${open ? accentColor + '28' : '#e5e7eb'}`,
+        borderRadius: '18px',
+        background: '#fff',
+        overflow: 'hidden',
+        transition: 'border-color 0.2s',
+        boxShadow: open ? `0 4px 24px ${accentColor}12` : '0 1px 4px rgba(0,0,0,0.04)',
+      }}
+    >
+      {/* Folder header */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '14px 16px',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+      >
+        <span
+          style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: accentBg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          {folderIcon}
+        </span>
+
+        <div style={{ flex: 1 }}>
+          <p style={{ margin: 0, fontWeight: 700, fontSize: 13.5, color: '#0d2220', lineHeight: 1.3 }}>
+            {label}
+          </p>
+          <p style={{ margin: 0, fontSize: 11.5, color: '#9db5b3', marginTop: 1 }}>
+            {activeCount} dari {items.length} quiz tersedia
+          </p>
+        </div>
+
+        <span style={{ color: accentColor, opacity: 0.7 }}>
+          <ChevronDown open={open} />
+        </span>
+      </button>
+
+      {/* Divider line when open */}
+      {open && (
+        <div style={{ height: 1, background: `${accentColor}14`, marginLeft: 16, marginRight: 16 }} />
+      )}
+
+      {/* Quiz list - animated expand */}
+      <div
+        style={{
+          maxHeight: open ? `${items.length * 80}px` : '0px',
+          overflow: 'hidden',
+          transition: 'max-height 0.3s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
+        <div style={{ padding: '8px 10px 10px' }}>
+          {items.map((q, idx) => (
+            <button
+              key={q.name}
+              onClick={() => q.active ? navigate(q.path!) : onComingSoon(q.name)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                background: 'transparent',
+                border: 'none',
+                borderRadius: 14,
+                padding: '10px 8px',
+                width: '100%',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'background 0.12s',
+                marginBottom: idx < items.length - 1 ? 2 : 0,
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = q.active ? accentBg : '#f9fafb'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+              }}
+            >
+              {/* Icon */}
+              <span
+                style={{
+                  width: 38, height: 38, borderRadius: 11,
+                  background: q.active ? accentBg : '#f3f4f6',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                  opacity: q.active ? 1 : 0.65,
+                }}
+              >
+                {q.icon}
+              </span>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: q.active ? '#0d2220' : '#9ca3af', lineHeight: 1.3 }}>
+                  {q.name}
+                </p>
+                <p style={{ margin: 0, fontSize: 11, color: '#aac4c2', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {q.sub}
+                </p>
+              </div>
+
+              {/* Badge */}
+              <span
+                style={{
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                  padding: '3px 9px',
+                  borderRadius: 99,
+                  flexShrink: 0,
+                  background: q.active ? accentBg : '#f3f4f6',
+                  color: q.active ? accentColor : '#9ca3af',
+                }}
+              >
+                {q.active ? 'Tersedia' : 'Segera'}
+              </span>
+
+              <span style={{ color: q.active ? accentColor : '#d1d5db', flexShrink: 0, opacity: 0.7 }}>
+                <ChevronRight />
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function QuizNavPage() {
   const [modal, setModal] = useState<string | null>(null)
+
+  const complianceItems = quizzes.filter(q => q.training_type === 'COMPLIANCE')
+  const hrItems = quizzes.filter(q => q.training_type === 'HR')
 
   return (
     <>
@@ -118,7 +333,6 @@ export default function QuizNavPage() {
             <div className="w-px h-7 bg-[#329F96]/25" />
             <img src={hyundaiLogo} alt="Hyundai" className="h-9 object-contain" />
           </div>
-          {/* Back button removed */}
         </nav>
 
         {/* Content */}
@@ -133,45 +347,26 @@ export default function QuizNavPage() {
             Tersedia untuk seluruh karyawan Zinus Indonesia
           </p>
 
-          <div className="flex flex-col gap-2.5">
-            {quizzes.map(q => (
-              <button
-                key={q.name}
-                onClick={() => q.active ? navigate(q.path!) : setModal(q.name)}
-                className={[
-                  'flex items-center gap-3.5 bg-white border rounded-2xl px-4 py-3.5 text-left w-full transition-all duration-150',
-                  q.active
-                    ? 'border-[#329F96]/15 hover:border-[#329F96]/35 hover:shadow-[0_4px_18px_rgba(50,159,150,0.10)] hover:-translate-y-px active:scale-[0.99]'
-                    : 'border-gray-100 opacity-70 cursor-pointer hover:opacity-90',
-                ].join(' ')}
-              >
-                {/* Icon container */}
-                <span className={[
-                  'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
-                  q.active ? 'bg-[#1a7a73]/8' : 'bg-gray-50',
-                ].join(' ')}>
-                  {q.icon}
-                </span>
+          <div className="flex flex-col gap-3">
+            <FolderSection
+              label="Compliance"
+              accentColor="#1a7a73"
+              accentBg="rgba(26,122,115,0.08)"
+              folderIcon={<FolderComplianceIcon />}
+              items={complianceItems}
+              defaultOpen={true}
+              onComingSoon={setModal}
+            />
 
-                <div className="flex-1 min-w-0">
-                  <p className="m-0 font-semibold text-[13.5px] text-[#0d2220] mb-0.5">{q.name}</p>
-                  <p className="m-0 text-[11.5px] text-[#7a9997] truncate max-sm:whitespace-normal">{q.sub}</p>
-                </div>
-
-                <span className={[
-                  'text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0',
-                  q.active
-                    ? 'bg-[#329F96]/10 text-[#1a7a73]'
-                    : 'bg-gray-100 text-gray-400',
-                ].join(' ')}>
-                  {q.active ? 'Tersedia' : 'Segera'}
-                </span>
-
-                <span className="text-[#c5d8d7] flex-shrink-0">
-                  <ChevronRight />
-                </span>
-              </button>
-            ))}
+            <FolderSection
+              label="Human Resources"
+              accentColor="#be185d"
+              accentBg="rgba(190,24,93,0.08)"
+              folderIcon={<FolderHRIcon />}
+              items={hrItems}
+              defaultOpen={false}
+              onComingSoon={setModal}
+            />
           </div>
         </main>
 

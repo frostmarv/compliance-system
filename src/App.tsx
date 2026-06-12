@@ -8,6 +8,7 @@ import CtpatQuiz from './pages/public/quiz/ctpat/Ctpat'
 import CompanyQuiz from './pages/public/quiz/company/Company'
 import ViewPage from './pages/public/view/ViewPage'
 import TrainingViewPage from './pages/public/view/TrainingViewPage'
+import SexualHarassmentQuiz from './pages/public/quiz-hr/sexual-harassment/QuizSexualHarassment'
 
 // 🔐 Admin Pages & Layouts
 import LoginPage from './pages/admin/LoginPage'
@@ -28,6 +29,7 @@ function App() {
         <Route path="/quiz/5r" element={<Quiz5R />} />
         <Route path="/quiz/ctpat" element={<CtpatQuiz />} />
         <Route path="/quiz/company" element={<CompanyQuiz />} />
+        <Route path="/quiz-hr/sexual-harassment" element={<SexualHarassmentQuiz />} />
         <Route path="/view" element={<ViewPage />} />
         <Route path="/view/:trainingCode" element={<TrainingViewPage />} />
 
