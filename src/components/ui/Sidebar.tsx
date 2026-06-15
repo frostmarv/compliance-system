@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import zinusLogo from '@/assets/zinus-tulisan-putih.webp'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 function IconDashboard() {
@@ -74,32 +75,32 @@ function IconLogout() {
   )
 }
 
+// ── Role badge ────────────────────────────────────────────────────────────────
+function RoleBadge({ role }: { role: string }) {
+  const normalized = role.toLowerCase()
+  const isPemilik = normalized === 'pemilik'
+  return (
+    <span
+      className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide"
+      style={isPemilik
+        ? { background: 'rgba(251,191,36,0.2)', color: '#fbbf24' }
+        : { background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)' }
+      }
+    >
+      {isPemilik ? '★ ' : ''}{role}
+    </span>
+  )
+}
+
 // ── Sidebar ──────────────────────────────────────────────────────────────────
 export default function Sidebar() {
-  const location = useLocation()
-  const navigate = useNavigate()
+  const location  = useLocation()
+  const navigate  = useNavigate()
+  const { staff } = useAuth()
 
   const [quizOpen, setQuizOpen] = useState(
     location.pathname.startsWith('/admin/quiz') || location.pathname.startsWith('/admin/hasil')
   )
-  const [userName, setUserName] = useState<string>('')
-  const [userEmail, setUserEmail] = useState<string>('')
-  const [userInitial, setUserInitial] = useState<string>('A')
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        const { user } = data
-        // Ambil nama dari user_metadata, fallback ke email jika tidak ada
-        const fullName = user.user_metadata?.full_name || user.user_metadata?.name || ''
-        const displayName = fullName || user.email?.split('@')[0] || 'User'
-        
-        setUserName(displayName)
-        setUserEmail(user.email || '')
-        setUserInitial(displayName.charAt(0).toUpperCase())
-      }
-    })
-  }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -111,43 +112,38 @@ export default function Sidebar() {
     location.pathname.startsWith('/admin/quiz') ||
     location.pathname.startsWith('/admin/hasil')
 
-  const navBase =
-    'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group'
-  const navActive =
-    'bg-white/15 text-white shadow-inner'
-  const navIdle =
-    'text-white/60 hover:text-white hover:bg-white/10'
+  const navBase   = 'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group'
+  const navActive = 'bg-white/15 text-white shadow-inner'
+  const navIdle   = 'text-white/60 hover:text-white hover:bg-white/10'
+  const subBase   = 'flex items-center gap-2.5 pl-10 pr-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-150'
+  const subActive = 'bg-white/15 text-white'
+  const subIdle   = 'text-white/55 hover:text-white hover:bg-white/10'
 
-  const subBase =
-    'flex items-center gap-2.5 pl-10 pr-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-150'
-  const subActive =
-    'bg-white/15 text-white'
-  const subIdle =
-    'text-white/55 hover:text-white hover:bg-white/10'
+  // Derived display values
+  const displayName = staff?.nama ?? '...'
+  const initial     = displayName !== '...' ? displayName.charAt(0).toUpperCase() : '?'
+  const factoryLabel = staff?.factory === 1
+    ? 'Zinus Global'
+    : staff?.factory === 2
+    ? 'Zinus Dream'
+    : null
 
   return (
     <aside
       className="flex flex-col h-screen w-60 shrink-0 select-none"
-      style={{
-        background: 'linear-gradient(180deg, #1a7a73 0%, #329F96 55%, #2ab5aa 100%)',
-      }}
+      style={{ background: 'linear-gradient(180deg, #1a7a73 0%, #329F96 55%, #2ab5aa 100%)' }}
     >
-      {/* ── Logo area (CENTERED) ──────────────────────────────────────────── */}
+      {/* ── Logo ── */}
       <div className="px-5 pt-7 pb-5 flex justify-center">
-        <img
-          src={zinusLogo}
-          alt="Zinus"
-          className="h-12 w-auto object-contain"
-        />
+        <img src={zinusLogo} alt="Zinus" className="h-12 w-auto object-contain" />
       </div>
       <div className="px-5 pb-4">
         <div className="h-px bg-white/15 rounded-full" />
       </div>
 
-      {/* ── Navigation ─────────────────────────────────────────── */}
+      {/* ── Navigation ── */}
       <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
 
-        {/* Dashboard */}
         <NavLink
           to="/admin/dashboard"
           className={`${navBase} ${isActive('/admin/dashboard') ? navActive : navIdle}`}
@@ -159,7 +155,6 @@ export default function Sidebar() {
           )}
         </NavLink>
 
-        {/* Quiz dropdown */}
         <div>
           <button
             onClick={() => setQuizOpen((v) => !v)}
@@ -167,36 +162,27 @@ export default function Sidebar() {
           >
             <IconQuiz />
             <span>Quiz</span>
-            <span className="ml-auto">
-              <IconChevron open={quizOpen} />
-            </span>
+            <span className="ml-auto"><IconChevron open={quizOpen} /></span>
           </button>
 
-          <div
-            className={`overflow-hidden transition-all duration-200 ${
-              quizOpen ? 'max-h-32 opacity-100 mt-0.5' : 'max-h-0 opacity-0'
-            }`}
-          >
+          <div className={`overflow-hidden transition-all duration-200 ${quizOpen ? 'max-h-32 opacity-100 mt-0.5' : 'max-h-0 opacity-0'}`}>
             <div className="space-y-0.5 py-1">
               <NavLink
                 to="/admin/quiz/soal"
                 className={`${subBase} ${isActive('/admin/quiz/soal') ? subActive : subIdle}`}
               >
-                <IconSoal />
-                <span>Soal</span>
+                <IconSoal /><span>Soal</span>
               </NavLink>
               <NavLink
                 to="/admin/quiz/hasil"
                 className={`${subBase} ${isActive('/admin/quiz/hasil') ? subActive : subIdle}`}
               >
-                <IconHasil />
-                <span>Hasil Ujian</span>
+                <IconHasil /><span>Hasil Ujian</span>
               </NavLink>
             </div>
           </div>
         </div>
 
-        {/* User */}
         <NavLink
           to="/admin/users"
           className={`${navBase} ${isActive('/admin/users') ? navActive : navIdle}`}
@@ -210,23 +196,29 @@ export default function Sidebar() {
 
       </nav>
 
-      {/* ── Footer: Profile + Logout ────────────────────────────── */}
+      {/* ── Footer: Profile + Logout ── */}
       <div className="px-4 py-4 space-y-2">
         <div className="h-px bg-white/15 rounded-full mb-3" />
 
-        {/* Profile - Menampilkan Nama & Email */}
+        {/* Profile card */}
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/10">
           {/* Avatar */}
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
             style={{ background: 'rgba(255,255,255,0.25)', color: 'white' }}
           >
-            {userInitial}
+            {initial}
           </div>
+
           {/* Info */}
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-xs font-semibold truncate">{userName || '...'}</p>
-            <p className="text-white/50 text-[10px] truncate">{userEmail || '...'}</p>
+          <div className="flex-1 min-w-0 space-y-0.5">
+            <p className="text-white text-xs font-semibold truncate leading-tight">{displayName}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {staff?.role && <RoleBadge role={staff.role} />}
+              {factoryLabel && (
+                <span className="text-[9px] text-white/50 font-medium truncate">{factoryLabel}</span>
+              )}
+            </div>
           </div>
         </div>
 

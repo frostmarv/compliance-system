@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { generatePdf, viewPdf, downloadZip } from '@/services/pdfService'
+import { useAuth, isOwner } from '@/hooks/useAuth'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface TrainingType {
@@ -10,66 +11,76 @@ interface TrainingType {
   is_active: boolean
 }
 
-interface QuizResult {
+interface TestResult {
   id: string
-  nik: string
-  training_type_id: string
   score: number
   correct_count: number
   total_questions: number
-  user_answers: Record<string, string>
   submitted_at: string
-  test_type: 'pre' | 'post'
-  pdf_id: string | null          // ← tambah
-  karyawan?: {
-    nama: string
-    department: string | null
-    factory: number | null
-  }
+  pdf_id: string | null
   status: 'passed' | 'failed'
-  participant_name: string
-  participant_nik: string
-  department: string | null
-  factory: number | null
 }
 
-// ── Badge helpers ─────────────────────────────────────────────────────────────
-function StatusBadge({ status }: { status: 'passed' | 'failed' }) {
+interface ParticipantRow {
+  nik: string
+  participant_name: string
+  department: string | null
+  factory: number | null
+  pre: TestResult | null
+  post: TestResult | null
+}
+
+// Raw row from Supabase
+
+const FACTORIES = [
+  { key: 'all',   label: 'Semua Factory',          short: 'Semua' },
+  { key: '1',     label: 'Zinus Global Indonesia',  short: 'Global' },
+  { key: '2',     label: 'Zinus Dream Indonesia',   short: 'Dream' },
+] as const
+type FactoryKey = typeof FACTORIES[number]['key']
+
+const PASSING = 70
+
+// ── Tiny badge atoms ──────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: 'passed' | 'failed' | null }) {
+  if (!status)
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-400">—</span>
   return status === 'passed' ? (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />Lulus
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Lulus
     </span>
   ) : (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />Tidak Lulus
+      <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />Tidak Lulus
     </span>
   )
 }
 
-function FactoryBadge({ factory }: { factory: number | null }) {
+function TestStatusCell({ result }: { result: TestResult | null }) {
+  if (!result)
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-400">Belum</span>
+      </div>
+    )
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <StatusBadge status={result.status} />
+      <span className={`text-xs font-bold ${result.status === 'passed' ? 'text-emerald-600' : 'text-rose-500'}`}>
+        {result.score}%
+      </span>
+      <span className="text-[10px] text-gray-400">{result.correct_count}/{result.total_questions} benar</span>
+    </div>
+  )
+}
+
+function FactoryChip({ factory }: { factory: number | null }) {
   if (factory == null)
-    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-500">Global</span>
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-teal-50 text-teal-600 border border-teal-100">
-      F{factory}
-    </span>
-  )
-}
-
-function ScoreBadge({ score, passing = 70 }: { score: number; passing?: number }) {
-  const ok = score >= passing
-  return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-      {score}%
-    </span>
-  )
-}
-
-function TestTypeBadge({ type }: { type: 'pre' | 'post' }) {
-  return type === 'pre' ? (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-50 text-violet-600 border border-violet-100">PRE</span>
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-500">—</span>
+  return factory === 1 ? (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-teal-50 text-teal-600 border border-teal-100">Global</span>
   ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">POST</span>
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100">Dream</span>
   )
 }
 
@@ -77,55 +88,157 @@ function TestTypeBadge({ type }: { type: 'pre' | 'post' }) {
 function SkeletonRow() {
   return (
     <tr className="border-b border-gray-50">
-      {[40, 180, 60, 60, 80, 90, 120].map((w, i) => (
-        <td key={i} className="px-5 py-4">
-          <div className="h-3 bg-gray-100 rounded-full animate-pulse" style={{ width: w }} />
+      {[32, 100, 140, 80, 90, 90, 80, 70].map((w, i) => (
+        <td key={i} className="px-4 py-4">
+          <div className="h-3 bg-gray-100 rounded-full animate-pulse mx-auto" style={{ width: w }} />
         </td>
       ))}
     </tr>
   )
 }
 
-// ── Modal Detail ──────────────────────────────────────────────────────────────
+// ── Score Ring ────────────────────────────────────────────────────────────────
+function ScoreRing({ score, size = 72 }: { score: number; size?: number }) {
+  const r = (size - 8) / 2
+  const circ = 2 * Math.PI * r
+  const pct = Math.min(score, 100) / 100
+  const ok = score >= PASSING
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth="6" />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={ok ? '#10b981' : '#f43f5e'} strokeWidth="6"
+        strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+      />
+    </svg>
+  )
+}
+
+// ── Detail Modal ──────────────────────────────────────────────────────────────
 function ModalDetail({
-  result,
+  row,
   onClose,
   onGeneratePdf,
   onViewPdf,
-  pdfLoading,
-  viewLoading,
+  pdfLoadingId,
+  viewLoadingId,
 }: {
-  result: QuizResult
+  row: ParticipantRow
   onClose: () => void
   onGeneratePdf: (id: string) => void
   onViewPdf: (pdfId: string) => void
-  pdfLoading: boolean
-  viewLoading: boolean
+  pdfLoadingId: string | null
+  viewLoadingId: string | null
 }) {
   const fmt = (d: string) =>
     new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
+  const TestCard = ({ type, result }: { type: 'pre' | 'post'; result: TestResult | null }) => {
+    const label = type === 'pre' ? 'Pre Test' : 'Post Test'
+    const badgeStyle = type === 'pre'
+      ? { bg: 'bg-violet-50', text: 'text-violet-600', border: 'border-violet-100' }
+      : { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100' }
+
+    if (!result) {
+      return (
+        <div className={`p-4 rounded-xl border border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2 min-h-[140px]`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>{label}</span>
+          <p className="text-xs text-gray-400">Belum mengikuti ujian</p>
+        </div>
+      )
+    }
+
+    const isLoading = pdfLoadingId === result.id
+    const isViewLoading = viewLoadingId === result.pdf_id
+
+    return (
+      <div className={`p-4 rounded-xl border bg-white ${result.status === 'passed' ? 'border-emerald-100' : 'border-rose-100'}`}>
+        <div className="flex items-center justify-between mb-3">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}>{label}</span>
+          <StatusBadge status={result.status} />
+        </div>
+
+        <div className="flex items-center gap-4">
+          {/* Score ring */}
+          <div className="relative shrink-0">
+            <ScoreRing score={result.score} />
+            <div className="absolute inset-0 flex items-center justify-center" style={{ transform: 'none' }}>
+              <span className={`text-sm font-bold ${result.status === 'passed' ? 'text-emerald-600' : 'text-rose-500'}`}>{result.score}%</span>
+            </div>
+          </div>
+
+          <div className="flex-1 space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-400 text-xs">Benar</span>
+              <span className="font-semibold text-gray-700">{result.correct_count} soal</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400 text-xs">Salah</span>
+              <span className="font-semibold text-gray-700">{result.total_questions - result.correct_count} soal</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400 text-xs">Total</span>
+              <span className="font-semibold text-gray-700">{result.total_questions} soal</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400 text-xs">Tanggal</span>
+              <span className="font-semibold text-gray-700 text-[11px]">{fmt(result.submitted_at)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* PDF actions */}
+        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+          {result.pdf_id && (
+            <button
+              onClick={() => onViewPdf(result.pdf_id!)}
+              disabled={!!isViewLoading}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+              style={{ background: '#eff6ff', color: '#2563eb' }}
+            >
+              {isViewLoading ? <SpinIcon /> : <EyeIcon />}
+              Lihat PDF
+            </button>
+          )}
+          <button
+            onClick={() => onGeneratePdf(result.id)}
+            disabled={!!isLoading}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}
+          >
+            {isLoading ? <SpinIcon /> : <DocIcon />}
+            {result.pdf_id ? 'Regenerate' : 'Generate PDF'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
-        style={{ animation: 'modalIn 0.2s ease both' }}
+        style={{ animation: 'modalIn 0.2s ease both', maxHeight: '90vh', overflowY: 'auto' }}
       >
         {/* Header */}
-        <div className="px-6 py-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}>
+        <div className="px-6 py-4 flex items-center justify-between sticky top-0 z-10"
+          style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}>
           <div>
-            <p className="text-white/60 text-xs font-medium uppercase tracking-wider">Detail Hasil Ujian</p>
-            <p className="text-white font-bold text-sm mt-0.5">{result.participant_name}</p>
+            <p className="text-white/60 text-xs font-medium uppercase tracking-wider">Detail Peserta</p>
+            <p className="text-white font-bold text-base mt-0.5">{row.participant_name}</p>
           </div>
           <div className="flex items-center gap-2">
-            <TestTypeBadge type={result.test_type} />
-            <StatusBadge status={result.status} />
-            <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors">
+            <FactoryChip factory={row.factory} />
+            <button onClick={onClose}
+              className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -133,110 +246,41 @@ function ModalDetail({
           </div>
         </div>
 
-        {/* Body */}
         <div className="px-6 py-5 space-y-5">
+          {/* Info grid */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             {[
-              { label: 'Nama Peserta', value: result.participant_name },
-              { label: 'NIK',          value: result.participant_nik },
-              { label: 'Departemen',   value: result.department ?? '—' },
-              { label: 'Tanggal Ujian',value: fmt(result.submitted_at) },
+              { label: 'NIK',        value: row.nik },
+              { label: 'Departemen', value: row.department ?? '—' },
             ].map(({ label, value }) => (
               <div key={label}>
                 <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">{label}</p>
                 <p className="text-gray-700 font-medium">{value}</p>
               </div>
             ))}
-            <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Factory</p>
-              <FactoryBadge factory={result.factory} />
-            </div>
-            <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Tipe Ujian</p>
-              <TestTypeBadge type={result.test_type} />
-            </div>
           </div>
 
-          {/* Score */}
-          <div className="p-4 rounded-xl border bg-slate-50 border-slate-200">
-            <p className="text-gray-400 text-xs uppercase tracking-wider mb-3">Ringkasan Nilai</p>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold" style={{ color: '#329F96' }}>{result.score}%</p>
-                <p className="text-xs text-gray-400 mt-1">Nilai Akhir</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-700">{result.correct_count}</p>
-                <p className="text-xs text-gray-400 mt-1">Benar</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-700">{result.total_questions - result.correct_count}</p>
-                <p className="text-xs text-gray-400 mt-1">Salah</p>
-              </div>
-            </div>
-          </div>
-
+          {/* Passing grade notice */}
           <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-100">
-            <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <p className="text-xs text-amber-700">
-              <span className="font-semibold">Passing Grade: 70%</span> — Peserta dinyatakan lulus jika mencapai nilai minimal 70%
+              <span className="font-semibold">Passing Grade: {PASSING}%</span> — Peserta lulus jika nilai ≥ {PASSING}%
             </p>
+          </div>
+
+          {/* Test cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <TestCard type="pre"  result={row.pre}  />
+            <TestCard type="post" result={row.post} />
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+          <button onClick={onClose}
+            className="px-5 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors">
             Tutup
-          </button>
-
-          {/* Tombol lihat PDF — hanya muncul kalau pdf_id sudah ada */}
-          {result.pdf_id && (
-            <button
-              onClick={() => onViewPdf(result.pdf_id!)}
-              disabled={viewLoading}
-              className="px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-opacity disabled:opacity-60"
-              style={{ background: '#eff6ff', color: '#2563eb' }}
-            >
-              {viewLoading ? (
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              )}
-              Lihat PDF
-            </button>
-          )}
-
-          {/* Tombol generate — kalau pdf_id belum ada tampil "Generate", kalau sudah ada tampil "Regenerate" */}
-          <button
-            onClick={() => onGeneratePdf(result.id)}
-            disabled={pdfLoading}
-            className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-opacity disabled:opacity-60"
-            style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}
-          >
-            {pdfLoading ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                Generating…
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                {result.pdf_id ? 'Regenerate' : 'Generate PDF'}
-              </>
-            )}
           </button>
         </div>
       </div>
@@ -244,34 +288,66 @@ function ModalDetail({
   )
 }
 
+// ── Icon helpers ──────────────────────────────────────────────────────────────
+const SpinIcon = () => (
+  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+  </svg>
+)
+const EyeIcon = () => (
+  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+)
+const DocIcon = () => (
+  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+)
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function HasilUjian() {
+  const { staff, loading: authLoading } = useAuth()
+  const canSwitchFactory = isOwner(staff)
+
+  // Admin dikunci ke factory miliknya; Owner mulai dari 'all'
+  const defaultFactory: FactoryKey =
+    !canSwitchFactory && staff?.factory
+      ? (String(staff.factory) as FactoryKey)
+      : 'all'
+
   const [trainingTypes, setTrainingTypes]   = useState<TrainingType[]>([])
   const [activeTab, setActiveTab]           = useState<string>('')
-  const [activeTestType, setActiveTestType] = useState<'pre' | 'post'>('post')
-  const [results, setResults]               = useState<QuizResult[]>([])
+  const [activeFactory, setActiveFactory]   = useState<FactoryKey>(defaultFactory)
+  const [rows, setRows]                     = useState<ParticipantRow[]>([])
   const [loadingTabs, setLoadingTabs]       = useState(true)
   const [loadingResults, setLoadingResults] = useState(false)
-  const [selectedResult, setSelectedResult] = useState<QuizResult | null>(null)
+  const [selectedRow, setSelectedRow]       = useState<ParticipantRow | null>(null)
 
   // PDF states
-  const [pdfLoadingId, setPdfLoadingId]       = useState<string | null>(null)
-  const [viewLoadingId, setViewLoadingId]     = useState<string | null>(null)
-  const [bulkLoading, setBulkLoading]         = useState(false)
-  const [pdfToast, setPdfToast]               = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [pdfLoadingId, setPdfLoadingId]   = useState<string | null>(null)
+  const [viewLoadingId, setViewLoadingId] = useState<string | null>(null)
+  const [bulkLoading, setBulkLoading]     = useState(false)
+  const genAllLoading = false
+  const [toast, setToast]                 = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
 
   // Filters
-  const [search, setSearch]               = useState('')
-  const [filterFactory, setFilterFactory] = useState<'all' | '1' | '2'>('all')
-  const [filterStatus, setFilterStatus]   = useState<'all' | 'passed' | 'failed'>('all')
-  const [filterDate, setFilterDate]       = useState<'all' | 'today' | 'week' | 'month'>('all')
-
-  const PASSING = 70
+  const [search, setSearch]             = useState('')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'passed' | 'failed' | 'incomplete'>('all')
+  const [filterDept, setFilterDept]     = useState<string>('all')
 
   const showToast = (type: 'success' | 'error', msg: string) => {
-    setPdfToast({ type, msg })
-    setTimeout(() => setPdfToast(null), 4000)
+    setToast({ type, msg })
+    setTimeout(() => setToast(null), 4000)
   }
+
+  // Sync factory lock once staff data arrives
+  useEffect(() => {
+    if (!authLoading && !canSwitchFactory && staff?.factory) {
+      setActiveFactory(String(staff.factory) as FactoryKey)
+    }
+  }, [authLoading, canSwitchFactory, staff?.factory])
 
   // 1. Fetch training types
   useEffect(() => {
@@ -286,12 +362,12 @@ export default function HasilUjian() {
       })
   }, [])
 
-  // 2. Fetch hasil ujian
+  // 2. Fetch & merge pre+post per participant
   useEffect(() => {
     if (!activeTab) return
-    const fetchResults = async () => {
+    const fetch = async () => {
       setLoadingResults(true)
-      setResults([])
+      setRows([])
 
       let query = supabase
         .from('hasil_ujian')
@@ -302,67 +378,80 @@ export default function HasilUjian() {
           karyawan:nik ( nama, department, factory )
         `)
         .eq('training_type_id', activeTab)
-        .eq('test_type', activeTestType)
         .order('submitted_at', { ascending: false })
 
-      if (filterFactory !== 'all') query = query.eq('karyawan.factory', parseInt(filterFactory))
-
-      if (filterDate !== 'all') {
-        const now = new Date()
-        const start =
-          filterDate === 'today' ? new Date(new Date().setHours(0, 0, 0, 0)) :
-          filterDate === 'week'  ? new Date(now.setDate(now.getDate() - 7)) :
-                                   new Date(now.setMonth(now.getMonth() - 1))
-        query = query.gte('submitted_at', start.toISOString())
+      if (activeFactory !== 'all') {
+        query = query.eq('karyawan.factory', parseInt(activeFactory))
       }
 
       const { data, error } = await query
       if (error) { console.error(error); setLoadingResults(false); return }
 
-      setResults(
-        (data ?? []).map((item: any): QuizResult => {
-          const k = item.karyawan as { nama: string; department: string | null; factory: number | null } | null
-          return {
-            id:               item.id,
-            nik:              item.nik,
-            training_type_id: item.training_type_id,
-            score:            item.score ?? 0,
-            correct_count:    item.correct_count ?? 0,
-            total_questions:  item.total_questions ?? 0,
-            user_answers:     item.user_answers ?? {},
-            submitted_at:     item.submitted_at,
-            test_type:        item.test_type ?? 'post',
-            pdf_id:           item.pdf_id ?? null,        // ← petakan pdf_id
-            karyawan:         k ?? undefined,
-            status:           (item.score ?? 0) >= PASSING ? 'passed' : 'failed',
-            participant_name: k?.nama ?? item.nik,
-            participant_nik:  item.nik,
-            department:       k?.department ?? null,
-            factory:          k?.factory ?? null,
-          }
-        })
-      )
+      // Group by NIK
+      const map = new Map<string, ParticipantRow>()
+      ;(data ?? []).forEach((item: any) => {
+        const k = item.karyawan as { nama: string; department: string | null; factory: number | null } | null
+        const nik = item.nik as string
+        if (!map.has(nik)) {
+          map.set(nik, {
+            nik,
+            participant_name: k?.nama ?? nik,
+            department: k?.department ?? null,
+            factory: k?.factory ?? null,
+            pre: null,
+            post: null,
+          })
+        }
+        const row = map.get(nik)!
+        const result: TestResult = {
+          id:             item.id,
+          score:          item.score ?? 0,
+          correct_count:  item.correct_count ?? 0,
+          total_questions:item.total_questions ?? 0,
+          submitted_at:   item.submitted_at,
+          pdf_id:         item.pdf_id ?? null,
+          status:         (item.score ?? 0) >= PASSING ? 'passed' : 'failed',
+        }
+        if (item.test_type === 'pre')  row.pre  = result
+        if (item.test_type === 'post') row.post = result
+      })
+
+      setRows(Array.from(map.values()))
       setLoadingResults(false)
     }
-    fetchResults()
-  }, [activeTab, activeTestType, filterFactory, filterDate])
+    fetch()
+  }, [activeTab, activeFactory])
 
-  const filtered = results.filter((r) => {
+  // Derived departments list for dropdown
+  const departments = Array.from(new Set(rows.map((r) => r.department).filter(Boolean) as string[])).sort()
+
+  // Derived filter
+  const filtered = rows.filter((r) => {
     const q = search.toLowerCase()
     const matchSearch =
       r.participant_name.toLowerCase().includes(q) ||
-      r.participant_nik.toLowerCase().includes(q) ||
-      (r.department ?? '').toLowerCase().includes(q)
-    return matchSearch && (filterStatus === 'all' || r.status === filterStatus)
+      r.nik.toLowerCase().includes(q)
+
+    const matchDept = filterDept === 'all' || r.department === filterDept
+
+    const matchStatus =
+      filterStatus === 'all'        ? true :
+      filterStatus === 'incomplete' ? (!r.pre || !r.post) :
+      filterStatus === 'passed'     ? (r.post?.status === 'passed') :
+                                      (r.post?.status === 'failed')
+
+    return matchSearch && matchDept && matchStatus
   })
 
   const activeTraining = trainingTypes.find((t) => t.id === activeTab)
 
   const stats = {
-    total:    filtered.length,
-    passed:   filtered.filter((r) => r.status === 'passed').length,
-    failed:   filtered.filter((r) => r.status === 'failed').length,
-    avgScore: filtered.length ? Math.round(filtered.reduce((a, r) => a + r.score, 0) / filtered.length) : 0,
+    total:      filtered.length,
+    complete:   filtered.filter((r) => r.pre && r.post).length,
+    passed:     filtered.filter((r) => r.post?.status === 'passed').length,
+    avgPost:    filtered.filter((r) => r.post).length
+      ? Math.round(filtered.filter((r) => r.post).reduce((a, r) => a + r.post!.score, 0) / filtered.filter((r) => r.post).length)
+      : 0,
   }
 
   // ── PDF handlers ──────────────────────────────────────────────────────────
@@ -371,11 +460,19 @@ export default function HasilUjian() {
     try {
       const result = await generatePdf(hasilId)
       showToast('success', 'PDF berhasil dibuat!')
-      // Update pdf_id di local state tanpa re-fetch
-      setResults((prev) => prev.map((r) =>
-        r.id === hasilId ? { ...r, pdf_id: result.pdf_id } : r
-      ))
-      setSelectedResult((prev) => prev?.id === hasilId ? { ...prev, pdf_id: result.pdf_id } : prev)
+      setRows((prev) => prev.map((r) => {
+        let changed = false
+        const next = { ...r }
+        if (r.pre?.id === hasilId)  { next.pre  = { ...r.pre!,  pdf_id: result.pdf_id }; changed = true }
+        if (r.post?.id === hasilId) { next.post = { ...r.post!, pdf_id: result.pdf_id }; changed = true }
+        return changed ? next : r
+      }))
+      setSelectedRow((prev) => {
+        if (!prev) return prev
+        if (prev.pre?.id === hasilId)  return { ...prev, pre:  { ...prev.pre!,  pdf_id: result.pdf_id } }
+        if (prev.post?.id === hasilId) return { ...prev, post: { ...prev.post!, pdf_id: result.pdf_id } }
+        return prev
+      })
     } catch (e: any) {
       showToast('error', e.message ?? 'Gagal generate PDF')
     } finally {
@@ -403,7 +500,7 @@ export default function HasilUjian() {
         year:          now.getFullYear(),
         semester:      now.getMonth() < 6 ? 1 : 2,
         training_type: activeTraining.code,
-        factory:       filterFactory !== 'all' ? `Factory_${filterFactory}` : undefined,
+        factory:       activeFactory !== 'all' ? `Factory_${activeFactory}` : undefined,
       })
       showToast('success', 'ZIP sedang didownload…')
     } catch (e: any) {
@@ -411,60 +508,115 @@ export default function HasilUjian() {
     } finally {
       setBulkLoading(false)
     }
-  }, [activeTraining, filterFactory])
+  }, [activeTraining, activeFactory])
 
-  const resetTab = () => {
-    setSearch(''); setFilterFactory('all'); setFilterStatus('all')
-    setFilterDate('all'); setActiveTestType('post')
+  const handleGenerateAll = useCallback(async () => {
+    // TODO: implement generateBulkPdf in pdfService when ready
+    showToast("error", "Fitur generate bulk belum tersedia")
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const resetFilters = () => {
+    setSearch(''); setFilterStatus('all'); setFilterDept('all')
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+  if (authLoading) return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center gap-3 text-gray-400 text-sm">
+        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+        Memuat data pengguna…
+      </div>
+    </div>
+  )
+
   return (
     <>
       <style>{`
-        @keyframes fadein   { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
-        @keyframes modalIn  { from { opacity:0; transform:scale(0.96); }     to { opacity:1; transform:scale(1); } }
-        @keyframes slideDown{ from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+        @keyframes fadein  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+        @keyframes modalIn { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
         .anim-fadein { animation: fadein 0.3s ease both; }
       `}</style>
 
       {/* Toast */}
-      {pdfToast && (
+      {toast && (
         <div
           className="fixed top-5 right-5 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium"
-          style={{ animation: 'slideDown 0.25s ease both', background: pdfToast.type === 'success' ? '#ecfdf5' : '#fef2f2', color: pdfToast.type === 'success' ? '#065f46' : '#991b1b', border: `1px solid ${pdfToast.type === 'success' ? '#a7f3d0' : '#fecaca'}` }}
+          style={{
+            animation: 'slideDown 0.25s ease both',
+            background: toast.type === 'success' ? '#ecfdf5' : '#fef2f2',
+            color: toast.type === 'success' ? '#065f46' : '#991b1b',
+            border: `1px solid ${toast.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
+          }}
         >
-          {pdfToast.type === 'success'
+          {toast.type === 'success'
             ? <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
             : <svg className="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           }
-          {pdfToast.msg}
+          {toast.msg}
         </div>
       )}
 
       <div className="min-h-screen bg-gray-50">
 
-        {/* Header + Tabs */}
-        <div className="bg-white border-b border-gray-100 px-7 pt-7 pb-0">
-          <div className="anim-fadein">
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1a7a73' }}>Hasil Ujian</h1>
-            <p className="text-gray-400 text-sm mt-0.5 mb-5">Pantau hasil dan performa peserta ujian</p>
+        {/* ── Top: Factory selector + title ── */}
+        <div className="bg-white border-b border-gray-100 px-7 pt-6 pb-0">
+          <div className="anim-fadein flex items-end justify-between mb-5">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1a7a73' }}>Hasil Ujian</h1>
+              <p className="text-gray-400 text-sm mt-0.5">Pantau hasil pre & post test seluruh peserta</p>
+            </div>
+
+            {/* Factory selector — owner bisa switch, admin hanya lihat badge */}
+            {canSwitchFactory ? (
+              <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
+                {FACTORIES.map((f) => (
+                  <button key={f.key}
+                    onClick={() => { setActiveFactory(f.key); resetFilters() }}
+                    className="px-4 py-2 rounded-lg text-xs font-bold transition-all duration-150 whitespace-nowrap"
+                    style={activeFactory === f.key
+                      ? { background: 'white', color: '#1a7a73', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }
+                      : { color: '#9ca3af' }}>
+                    {f.short}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">Factory</span>
+                {activeFactory === '1' ? (
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-600 border border-teal-100">
+                    Zinus Global Indonesia
+                  </span>
+                ) : activeFactory === '2' ? (
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                    Zinus Dream Indonesia
+                  </span>
+                ) : null}
+              </div>
+            )}
           </div>
+
+          {/* Training type tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-px">
             {loadingTabs
-              ? [1,2,3,4,5,6].map((i) => <div key={i} className="h-9 w-32 rounded-t-lg bg-gray-100 animate-pulse" />)
+              ? [1,2,3,4].map((i) => <div key={i} className="h-9 w-36 rounded-t-lg bg-gray-100 animate-pulse" />)
               : trainingTypes.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => { setActiveTab(t.id); resetTab() }}
+                  <button key={t.id}
+                    onClick={() => { setActiveTab(t.id); resetFilters() }}
                     className="relative px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap"
                     style={activeTab === t.id
                       ? { background: 'white', color: '#329F96', borderTop: '2px solid #329F96', borderLeft: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', marginBottom: '-1px', zIndex: 2 }
-                      : { color: '#9ca3af' }}
-                  >
+                      : { color: '#9ca3af' }}>
                     {t.name}
                     <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold"
-                      style={activeTab === t.id ? { background: '#329F9620', color: '#329F96' } : { background: '#f1f5f9', color: '#94a3b8' }}>
+                      style={activeTab === t.id
+                        ? { background: '#329F9620', color: '#329F96' }
+                        : { background: '#f1f5f9', color: '#94a3b8' }}>
                       {activeTab === t.id ? filtered.length : '—'}
                     </span>
                   </button>
@@ -474,13 +626,13 @@ export default function HasilUjian() {
 
         <div className="px-7 py-6 space-y-4">
 
-          {/* Stats */}
+          {/* ── Stats ── */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 anim-fadein">
             {[
-              { label: 'Total Peserta', value: stats.total,         color: '#64748b' },
-              { label: 'Lulus',         value: stats.passed,        color: '#059669' },
-              { label: 'Tidak Lulus',   value: stats.failed,        color: '#dc2626' },
-              { label: 'Rata-rata',     value: `${stats.avgScore}%`,color: '#329F96' },
+              { label: 'Total Peserta',    value: stats.total,          color: '#64748b' },
+              { label: 'Selesai Keduanya', value: stats.complete,       color: '#0891b2' },
+              { label: 'Lulus Post Test',  value: stats.passed,         color: '#059669' },
+              { label: 'Rata-rata Post',   value: `${stats.avgPost}%`,  color: '#329F96' },
             ].map((s, i) => (
               <div key={i} className="p-4 rounded-xl border bg-white" style={{ borderColor: '#f1f5f9' }}>
                 <p className="text-xs text-gray-400 uppercase tracking-wider">{s.label}</p>
@@ -489,21 +641,8 @@ export default function HasilUjian() {
             ))}
           </div>
 
-          {/* Toolbar */}
+          {/* ── Toolbar ── */}
           <div className="flex flex-wrap items-center gap-3 anim-fadein">
-            {/* PRE / POST toggle */}
-            <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1">
-              {(['pre', 'post'] as const).map((type) => (
-                <button key={type} onClick={() => setActiveTestType(type)}
-                  className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
-                  style={activeTestType === type
-                    ? { background: 'white', color: type === 'pre' ? '#7c3aed' : '#2563eb', boxShadow: '0 1px 3px rgba(0,0,0,0.12)' }
-                    : { color: '#9ca3af' }}>
-                  {type.toUpperCase()} Test
-                </button>
-              ))}
-            </div>
-
             {/* Search */}
             <div className="relative flex-1 min-w-[180px]">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -515,62 +654,88 @@ export default function HasilUjian() {
                 style={{ '--tw-ring-color': '#329F96' } as React.CSSProperties} />
             </div>
 
-            <select value={filterFactory} onChange={(e) => setFilterFactory(e.target.value as any)}
-              className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
-              <option value="all">Semua Factory</option>
-              <option value="1">Factory 1</option>
-              <option value="2">Factory 2</option>
-            </select>
-
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}
               className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
               <option value="all">Semua Status</option>
-              <option value="passed">Lulus</option>
-              <option value="failed">Tidak Lulus</option>
+              <option value="passed">Post Test Lulus</option>
+              <option value="failed">Post Test Tidak Lulus</option>
+              <option value="incomplete">Belum Lengkap</option>
             </select>
 
-            <select value={filterDate} onChange={(e) => setFilterDate(e.target.value as any)}
+            <select value={filterDept} onChange={(e) => setFilterDept(e.target.value)}
               className="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-600 focus:outline-none cursor-pointer">
-              <option value="all">Semua Waktu</option>
-              <option value="today">Hari Ini</option>
-              <option value="week">7 Hari Terakhir</option>
-              <option value="month">30 Hari Terakhir</option>
+              <option value="all">Semua Departemen</option>
+              {departments.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
             </select>
 
-            <button onClick={handleBulkDownload} disabled={bulkLoading || filtered.length === 0}
-              className="ml-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-opacity disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}>
-              {bulkLoading ? (
-                <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>Menyiapkan ZIP…</>
-              ) : (
-                <><svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                Download ZIP
-                {filtered.length > 0 && <span className="bg-white/20 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{filtered.length}</span>}
-                </>
-              )}
-            </button>
+            {/* Bulk actions */}
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={handleGenerateAll}
+                disabled={genAllLoading || filtered.length === 0}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-opacity disabled:opacity-50"
+                style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}
+              >
+                {genAllLoading ? <SpinIcon /> : <DocIcon />}
+                Generate Semua PDF
+              </button>
+
+              <button
+                onClick={handleBulkDownload}
+                disabled={bulkLoading || filtered.length === 0}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-opacity disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #1a7a73, #329F96)' }}
+              >
+                {bulkLoading ? (
+                  <><SpinIcon />Menyiapkan…</>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download ZIP
+                    {filtered.length > 0 && (
+                      <span className="bg-white/20 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{filtered.length}</span>
+                    )}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Table */}
-          <div className="bg-white rounded-2xl overflow-hidden anim-fadein" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07), 0 8px 24px rgba(0,0,0,0.05)' }}>
+          {/* ── Table ── */}
+          <div className="bg-white rounded-2xl overflow-hidden anim-fadein"
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07), 0 8px 24px rgba(0,0,0,0.05)' }}>
+
+            {/* Table header info */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div>
-                  <p className="text-sm font-bold text-gray-700">{activeTraining?.name ?? '—'}</p>
-                  <p className="text-xs text-gray-400">{activeTraining?.code} • {activeTestType === 'pre' ? 'Pre Test' : 'Post Test'}</p>
-                </div>
-                <TestTypeBadge type={activeTestType} />
+              <div>
+                <p className="text-sm font-bold text-gray-700">{activeTraining?.name ?? '—'}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {activeTraining?.code} •{' '}
+                  {activeFactory === 'all' ? 'Semua Factory' : FACTORIES.find(f => f.key === activeFactory)?.label}
+                </p>
               </div>
-              <span className="text-xs text-gray-400">{filtered.length} data</span>
+              <span className="text-xs text-gray-400">{filtered.length} peserta</span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    {['No.', 'Peserta', 'Factory', 'Tipe', 'Nilai', 'Status', 'Tanggal', 'Aksi'].map((h, i) => (
-                      <th key={i} className="px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-left first:w-12 last:text-center">{h}</th>
-                    ))}
+                    <th className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-left w-10">No.</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-left">NIK</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-left">Nama Peserta</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">Factory</th>
+                    {/* Split pre/post header */}
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-center"
+                      style={{ color: '#7c3aed' }}>Pre Test</th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-center"
+                      style={{ color: '#2563eb' }}>Post Test</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-left">Tanggal</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -583,91 +748,66 @@ export default function HasilUjian() {
                           <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                           </svg>
-                          <p className="text-sm">Belum ada hasil {activeTestType === 'pre' ? 'pre test' : 'post test'} untuk training ini</p>
+                          <p className="text-sm">Belum ada data ujian untuk training ini</p>
                         </td>
                       </tr>
                     )
-                    : filtered.map((r, i) => (
-                      <tr key={r.id} className="hover:bg-gray-50/70 transition-colors anim-fadein" style={{ animationDelay: `${i * 25}ms`, animationFillMode: 'both' }}>
-                        <td className="px-5 py-4 text-gray-400 text-xs font-medium">{i + 1}</td>
-                        <td className="px-5 py-4">
-                          <p className="text-gray-700 font-medium text-sm">{r.participant_name}</p>
-                          <p className="text-gray-400 text-xs">NIK: {r.participant_nik}</p>
-                          {r.department && <p className="text-gray-400 text-[10px] mt-0.5">{r.department}</p>}
-                        </td>
-                        <td className="px-5 py-4"><FactoryBadge factory={r.factory} /></td>
-                        <td className="px-5 py-4"><TestTypeBadge type={r.test_type} /></td>
-                        <td className="px-5 py-4 text-center"><ScoreBadge score={r.score} /></td>
-                        <td className="px-5 py-4 text-center"><StatusBadge status={r.status} /></td>
-                        <td className="px-5 py-4 text-xs text-gray-500">
-                          {new Date(r.submitted_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center justify-center gap-1.5">
+                    : filtered.map((r, i) => {
+                        const latestDate = [r.pre?.submitted_at, r.post?.submitted_at]
+                          .filter(Boolean)
+                          .sort()
+                          .at(-1)
+                        return (
+                          <tr key={r.nik}
+                            className="hover:bg-gray-50/70 transition-colors anim-fadein"
+                            style={{ animationDelay: `${i * 20}ms`, animationFillMode: 'both' }}>
 
-                            {/* Detail */}
-                            <button onClick={() => setSelectedResult(r)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                              style={{ background: '#329F9615', color: '#329F96' }}
-                              onMouseEnter={(e) => (e.currentTarget.style.background = '#329F9625')}
-                              onMouseLeave={(e) => (e.currentTarget.style.background = '#329F9615')}
-                              title="Lihat detail">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                              Detail
-                            </button>
+                            <td className="px-4 py-4 text-gray-400 text-xs font-medium">{i + 1}</td>
 
-                            {/* Lihat PDF — hanya tampil kalau pdf_id sudah ada */}
-                            {r.pdf_id ? (
+                            <td className="px-4 py-4">
+                              <span className="text-gray-500 text-xs font-mono">{r.nik}</span>
+                            </td>
+
+                            <td className="px-4 py-4">
+                              <p className="text-gray-700 font-medium text-sm">{r.participant_name}</p>
+                              {r.department && <p className="text-gray-400 text-[11px] mt-0.5">{r.department}</p>}
+                            </td>
+
+                            <td className="px-4 py-4 text-center">
+                              <FactoryChip factory={r.factory} />
+                            </td>
+
+                            {/* Pre test cell */}
+                            <td className="px-4 py-4 text-center">
+                              <TestStatusCell result={r.pre} />
+                            </td>
+
+                            {/* Post test cell */}
+                            <td className="px-4 py-4 text-center">
+                              <TestStatusCell result={r.post} />
+                            </td>
+
+                            <td className="px-4 py-4 text-xs text-gray-500">
+                              {latestDate
+                                ? new Date(latestDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                                : '—'}
+                            </td>
+
+                            <td className="px-4 py-4 text-center">
                               <button
-                                onClick={() => handleViewPdf(r.pdf_id!)}
-                                disabled={viewLoadingId === r.pdf_id}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                                style={{ background: '#eff6ff', color: '#2563eb' }}
-                                onMouseEnter={(e) => { if (!viewLoadingId) e.currentTarget.style.background = '#dbeafe' }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff' }}
-                                title="Lihat PDF">
-                                {viewLoadingId === r.pdf_id ? (
-                                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                  </svg>
-                                ) : (
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                )}
-                                PDF
+                                onClick={() => setSelectedRow(r)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                                style={{ background: '#329F9615', color: '#329F96' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = '#329F9625')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = '#329F9615')}
+                              >
+                                <EyeIcon />
+                                Detail
                               </button>
-                            ) : (
-                              /* Generate PDF — kalau belum ada */
-                              <button
-                                onClick={() => handleGenerateSingle(r.id)}
-                                disabled={pdfLoadingId === r.id}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                                style={{ background: '#f0fdf4', color: '#16a34a' }}
-                                onMouseEnter={(e) => { if (!pdfLoadingId) e.currentTarget.style.background = '#dcfce7' }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = '#f0fdf4' }}
-                                title="Generate PDF">
-                                {pdfLoadingId === r.id ? (
-                                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                  </svg>
-                                ) : (
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                                  </svg>
-                                )}
-                                Buat PDF
-                              </button>
-                            )}
-
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                            </td>
+                          </tr>
+                        )
+                      })}
                 </tbody>
               </table>
             </div>
@@ -676,14 +816,14 @@ export default function HasilUjian() {
       </div>
 
       {/* Modal */}
-      {selectedResult && (
+      {selectedRow && (
         <ModalDetail
-          result={selectedResult}
-          onClose={() => setSelectedResult(null)}
+          row={selectedRow}
+          onClose={() => setSelectedRow(null)}
           onGeneratePdf={handleGenerateSingle}
           onViewPdf={handleViewPdf}
-          pdfLoading={pdfLoadingId === selectedResult.id}
-          viewLoading={viewLoadingId === selectedResult.pdf_id}
+          pdfLoadingId={pdfLoadingId}
+          viewLoadingId={viewLoadingId}
         />
       )}
     </>
