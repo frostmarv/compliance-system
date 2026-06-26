@@ -6,6 +6,7 @@ import QuizPage from './pages/public/QuizPage'
 import Quiz5R from './pages/public/quiz/5r/5R'
 import CtpatQuiz from './pages/public/quiz/ctpat/Ctpat'
 import CompanyQuiz from './pages/public/quiz/company/Company'
+import KesadaranLingkunganQuiz from './pages/public/quiz/lingkungan/KesadaranLingkungan'
 import ViewPage from './pages/public/view/ViewPage'
 import TrainingViewPage from './pages/public/view/TrainingViewPage'
 import SexualHarassmentQuiz from './pages/public/quiz-hr/sexual-harassment/QuizSexualHarassment'
@@ -29,6 +30,7 @@ function App() {
         <Route path="/quiz/5r" element={<Quiz5R />} />
         <Route path="/quiz/ctpat" element={<CtpatQuiz />} />
         <Route path="/quiz/company" element={<CompanyQuiz />} />
+        <Route path="/quiz/lingkungan" element={<KesadaranLingkunganQuiz />} />
         <Route path="/quiz-hr/sexual-harassment" element={<SexualHarassmentQuiz />} />
         <Route path="/view" element={<ViewPage />} />
         <Route path="/view/:trainingCode" element={<TrainingViewPage />} />

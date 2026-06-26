@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import logoZinus from '@/assets/zinus-tulisan-putih-contour.webp'
 import logoHyundai from '@/assets/hyundai-ori-hitam.png'
-import CtpatLogo from '@/assets/image/ctpat-logo.png'
+import CtpatLogo from '@/assets/images/ctpat-logo.png'
 
 interface MateriCtpatProps {
   employeeName?: string

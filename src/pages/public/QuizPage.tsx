@@ -137,8 +137,8 @@ const quizzes: QuizItem[] = [
     name: 'Kesadaran Lingkungan',
     sub: 'Pengelolaan limbah & lingkungan hidup',
     icon: <LeafIcon />,
-    path: null,
-    active: false,
+    path: '/quiz/lingkungan',
+    active: true,
   },
   {
     training_type: 'HR',
