@@ -12,15 +12,13 @@ import fotoEmisiUdara from '@/assets/images/materi/lingkungan/emisi-udara.webp'
 import fotoPencemaranSungai from '@/assets/images/materi/lingkungan/pencemaran-sungai.webp'
 import fotoIspa from '@/assets/images/materi/lingkungan/ispa.webp'
 import fotoPencemaranTanah from '@/assets/images/materi/lingkungan/pencemaran-tanah.webp'
-import fotoLabelLimbahB3 from '@/assets/images/materi/lingkungan/label-limbah-b3.webp'
-import fotoImplementasiKemasanB3 from '@/assets/images/materi/lingkungan/implementasi-kemasan-b3.webp'
-import fotoJarakPenyimpananB3 from '@/assets/images/materi/lingkungan/jarak-penyimpanan-b3.webp'
-import fotoApd from '@/assets/images/materi/lingkungan/apd.webp'
 import fotoKonservasiAir from '@/assets/images/materi/lingkungan/konservasi-air.webp'
 import fotoLimbahCairDampak from '@/assets/images/materi/lingkungan/limbah-cair-dampak.webp'
+import fotoLimbahCairCover from '@/assets/images/materi/lingkungan/limbah-cair-cover.webp'
 import fotoSegregasiTempatSampah from '@/assets/images/materi/lingkungan/segregasi-tempat-sampah.webp'
 import fotoEsgLingkungan from '@/assets/images/materi/lingkungan/esg-lingkungan.webp'
-import fotoGhsBahanKimia from '@/assets/images/materi/lingkungan/ghs-bahan-kimia.webp'
+import fotoUpayaPengelolaan3R from '@/assets/images/materi/lingkungan/upaya-pengelolaan-3r.webp'
+import fotoContohImplementasi3R from '@/assets/images/materi/lingkungan/contoh-implementasi-3r.webp'
 
 interface MateriLingkunganProps {
   employeeName?: string
@@ -76,137 +74,62 @@ const MASALAH = [
   },
 ]
 
-// ─── DATA: 7 TOPIK UTAMA (Slide 3–9) ───────────────────────────────────────
+// ─── DATA: 5 TOPIK KESADARAN LINGKUNGAN ────────────────────────────────────
+// (Limbah B3 & Manajemen Bahan Kimia dipindah ke MateriLimbahB3.tsx)
 
 const TOPIK: Topik[] = [
   {
     kode: 'L1',
-    nama: 'Limbah B3',
-    warna: '#3E8E5B',
-    tagline: 'Kenali, kelola, dan simpan dengan aman',
-    deskripsi:
-      'Limbah B3 adalah sisa kegiatan (padat atau cair) yang karena sifat dan jumlahnya — baik langsung maupun tidak langsung — dapat membahayakan lingkungan dan makhluk hidup. Maksimal masa penyimpanan Limbah B3 adalah 3 bulan (90 hari) sesuai izin TPS Limbah B3.',
-    blocks: [
-      {
-        type: 'list',
-        title: 'Karakteristik Limbah',
-        items: [
-          'Sifat Fisik — berat jenis (densitas) dan wujud (padat, cair, atau gas)',
-          'Sifat Kimia — tingkat keasaman (pH) dan kandungan zat kimia berbahaya',
-          'Sifat Biologis — kehadiran mikroorganisme yang memengaruhi dekomposisi',
-          'Sifat Termal — kemampuan menghantarkan panas',
-          'Sifat Radioaktif — kemampuan memancarkan radiasi',
-          'Sifat Toksisitas — tingkat racun bagi makhluk hidup',
-          'Sifat Eksplosif & Reaktif — potensi meledak atau bereaksi berbahaya',
-          'Sifat Biodegradabilitas — kemampuan terurai oleh organisme hidup',
-          'Sifat Estetika — bau, warna, dan rasa yang ditimbulkan',
-        ],
-      },
-      {
-        type: 'steps',
-        title: 'Syarat Pengemasan',
-        items: [
-          { step: '01', judul: 'Material Sesuai', detail: 'Kemasan terbuat dari bahan yang sesuai karakteristik Limbah B3 yang disimpan' },
-          { step: '02', judul: 'Tertutup Rapat', detail: 'Memiliki penutup yang mencegah kebocoran/tumpahan saat penyimpanan & pengangkutan' },
-          { step: '03', judul: 'Tidak Rusak', detail: 'Kemasan dalam keadaan tidak bocor, tidak berkarat, dan tidak rusak' },
-          { step: '04', judul: 'Kapasitas Aman', detail: 'Mampu menampung Limbah B3 agar tetap berada di dalam kemasan' },
-        ],
-      },
-      {
-        type: 'list',
-        title: 'Persyaratan Pengumpulan',
-        items: [
-          'Limbah B3 dari sumber tidak spesifik',
-          'Limbah B3 dari bahan kimia kadaluwarsa, tumpahan, bekas kemasan, dan produk gagal spesifikasi',
-          'Limbah B3 dari sumber spesifik (sumber spesifik umum & khusus)',
-        ],
-      },
-      {
-        type: 'list',
-        title: 'Aturan Penyimpanan',
-        items: [
-          'Sesuai dengan jenis limbah yang tercantum dalam Izin TPS Limbah B3',
-          'Dilakukan di atas permukaan tanah',
-          'Area bebas dari bahaya kebakaran, banjir, dan tumpahan',
-          'Wadah harus compatible — tidak bereaksi dengan limbah yang disimpan',
-          'Seluruh limbah yang disimpan diberi simbol dan label',
-        ],
-      },
-      {
-        type: 'image',
-        src: fotoLabelLimbahB3,
-        alt: 'Contoh label limbah B3',
-        caption: 'Contoh label Limbah B3 — wajib dicantumkan pada setiap kemasan',
-      },
-      {
-        type: 'badges',
-        title: 'Simbol Limbah B3',
-        items: [
-          'Mudah Meledak', 'Pengoksidasi', 'Sangat Mudah Menyala', 'Mudah Menyala',
-          'Amat Sangat Beracun', 'Sangat Beracun', 'Beracun', 'Berbahaya',
-          'Korosif', 'Bersifat Iritasi', 'Berbahaya bagi Lingkungan',
-          'Karsinogenik', 'Teratogenik', 'Mutagenik',
-        ],
-      },
-      {
-        type: 'image',
-        src: fotoImplementasiKemasanB3,
-        alt: 'Implementasi kemasan limbah B3',
-        caption: 'Implementasi kemasan Limbah B3 sesuai standar',
-      },
-      {
-        type: 'image',
-        src: fotoJarakPenyimpananB3,
-        alt: 'Jarak penyimpanan limbah B3',
-        caption: 'Jarak penyimpanan antar kemasan Limbah B3',
-      },
-      {
-        type: 'list',
-        title: 'Pengurangan Limbah B3',
-        items: [
-          'Substitusi bahan — mengganti bahan baku/penolong B3 menjadi non-B3',
-          'Modifikasi proses (rekayasa engineering) — penerapan produksi bersih',
-          'Penggunaan teknologi ramah lingkungan',
-        ],
-      },
-      {
-        type: 'image',
-        src: fotoApd,
-        alt: 'Alat Pelindung Diri',
-        caption: 'Wajib gunakan APD (Alat Pelindung Diri) saat menangani Limbah B3',
-      },
-    ],
-  },
-  {
-    kode: 'L2',
     nama: '3R Pengelolaan Limbah',
     warna: '#2F7D52',
     tagline: 'Reduce, Reuse, Recycle — budayakan setiap hari',
     deskripsi:
-      'Upaya pengelolaan limbah dilakukan melalui prinsip 3R agar limbah yang dihasilkan dapat dikurangi, dimanfaatkan kembali, dan diolah menjadi sesuatu yang lebih bernilai sebelum akhirnya dibuang.',
+      'Upaya pengelolaan limbah dilakukan melalui prinsip 3R agar limbah yang dihasilkan dapat dikurangi, dimanfaatkan kembali, dan diolah menjadi sesuatu yang lebih bernilai sebelum akhirnya dibuang. 3R adalah budaya, bukan sekadar program — setiap karyawan berperan langsung di area kerjanya masing-masing.',
     blocks: [
       {
         type: 'cards',
         title: 'Budaya 3R',
         items: [
-          { icon: '♻️', judul: 'Reduce', detail: 'Mengurangi limbah yang dihasilkan dari awal proses kerja' },
-          { icon: '🔁', judul: 'Reuse', detail: 'Menggunakan kembali barang yang masih bisa dimanfaatkan' },
-          { icon: '🔄', judul: 'Recycle', detail: 'Mengolah kembali limbah menjadi produk yang bermanfaat' },
+          { icon: '♻️', judul: 'Reduce', detail: 'Mengurangi limbah yang dihasilkan sejak awal proses kerja, sebelum limbah itu tercipta' },
+          { icon: '🔁', judul: 'Reuse', detail: 'Menggunakan kembali barang yang masih bisa dimanfaatkan tanpa proses pengolahan tambahan' },
+          { icon: '🔄', judul: 'Recycle', detail: 'Mengolah kembali limbah menjadi produk baru yang bermanfaat dan bernilai jual' },
         ],
       },
       {
+        type: 'image',
+        src: fotoUpayaPengelolaan3R,
+        alt: 'Upaya pengelolaan limbah dengan prinsip 3R',
+        caption: 'Urutan prioritas pengelolaan limbah: Reduce → Reuse → Recycle',
+      },
+      {
         type: 'steps',
-        title: 'Contoh Implementasi',
+        title: 'Contoh Implementasi di Tempat Kerja',
         items: [
-          { step: '01', judul: 'Reduce', detail: 'Menggunakan kemasan kerja-ulang yang bisa digunakan berkali-kali' },
-          { step: '02', judul: 'Reuse', detail: 'Memanfaatkan kembali barang/material yang masih layak pakai' },
-          { step: '03', judul: 'Recycle', detail: 'Mengolah kembali limbah plastik & bahan baku menjadi produk baru' },
+          { step: '01', judul: 'Reduce', detail: 'Menggunakan kemasan kerja-ulang (reusable) yang bisa dipakai berkali-kali untuk material produksi' },
+          { step: '02', judul: 'Reuse', detail: 'Memanfaatkan kembali barang atau material yang masih layak pakai sebelum membeli yang baru' },
+          { step: '03', judul: 'Recycle', detail: 'Mengolah kembali limbah plastik dan bahan baku menjadi produk turunan baru' },
+        ],
+      },
+      {
+        type: 'image',
+        src: fotoContohImplementasi3R,
+        alt: 'Contoh implementasi 3R di area kerja',
+        caption: 'Contoh nyata penerapan Reduce, Reuse, Recycle di lingkungan produksi',
+      },
+      {
+        type: 'list',
+        title: 'Manfaat Penerapan 3R',
+        items: [
+          'Mengurangi volume sampah yang dibuang ke TPA (Tempat Pembuangan Akhir)',
+          'Menekan biaya pengelolaan limbah perusahaan',
+          'Memperpanjang umur material dan mengurangi pemborosan sumber daya',
+          'Mendukung target keberlanjutan lingkungan (sustainability) perusahaan',
         ],
       },
     ],
   },
   {
-    kode: 'L3',
+    kode: 'L2',
     nama: 'Konservasi Air & Energi',
     warna: '#2C6E6E',
     tagline: 'Hemat sumber daya, jaga masa depan',
@@ -221,68 +144,102 @@ const TOPIK: Topik[] = [
       },
       {
         type: 'list',
+        title: 'Apa Itu Konservasi Air?',
+        items: [
+          'Upaya memelihara keberadaan, sifat, dan fungsi sumber daya air',
+          'Memastikan air selalu tersedia dalam kuantitas dan kualitas yang memadai',
+          'Memenuhi kebutuhan makhluk hidup, baik saat ini maupun yang akan datang',
+        ],
+      },
+      {
+        type: 'list',
         title: 'Cara Konservasi Air',
         items: [
           'Matikan keran air saat tidak digunakan',
-          'Laporkan jika terjadi kebocoran kran atau pipa',
-          'Manfaatkan air seefisien mungkin sesuai kebutuhan',
-          'Catat penggunaan air secara berkala',
+          'Laporkan jika terjadi kebocoran kran atau pipa ke bagian terkait',
+          'Manfaatkan air seefisien mungkin sesuai kebutuhan, hindari pemborosan',
+          'Catat penggunaan air secara berkala sebagai bentuk kontrol konsumsi',
+        ],
+      },
+      {
+        type: 'list',
+        title: 'Apa Itu Konservasi Energi?',
+        items: [
+          'Tindakan untuk mengurangi jumlah penggunaan energi tak terbarukan',
+          'Mengoptimalkan penggunaan energi baru terbarukan',
+          'Bagian dari peran aktif mengurangi dampak perubahan iklim bumi',
         ],
       },
       {
         type: 'cards',
         title: 'Hemat Energi, Yuk!',
         items: [
-          { icon: '💡', judul: 'Matikan Lampu', detail: 'Matikan lampu yang tidak digunakan' },
-          { icon: '🔌', judul: 'Cabut Charger', detail: 'Cabut charger setelah selesai mengisi daya' },
-          { icon: '⚙️', judul: 'Matikan Mesin', detail: 'Matikan mesin/peralatan saat tidak dipakai' },
-          { icon: '🔋', judul: 'Gunakan Seperlunya', detail: 'Gunakan peralatan listrik sesuai kebutuhan saja' },
+          { icon: '💡', judul: 'Matikan Lampu', detail: 'Matikan lampu di area yang tidak digunakan atau saat siang hari bila pencahayaan alami cukup' },
+          { icon: '🔌', judul: 'Cabut Charger', detail: 'Cabut charger dan peralatan listrik lain setelah selesai mengisi daya' },
+          { icon: '⚙️', judul: 'Matikan Mesin', detail: 'Matikan mesin atau peralatan produksi saat tidak digunakan atau saat istirahat' },
+          { icon: '🔋', judul: 'Gunakan Seperlunya', detail: 'Gunakan AC, komputer, dan peralatan listrik lain sesuai kebutuhan saja' },
+        ],
+      },
+    ],
+  },
+  {
+    kode: 'L3',
+    nama: 'Limbah Cair',
+    warna: '#1F6B49',
+    tagline: 'Kelola sebelum dibuang ke lingkungan',
+    deskripsi:
+      'Limbah cair (waste water) adalah sisa dari suatu proses produksi dan operasional yang berwujud cair. Limbah cair yang dibuang langsung tanpa pengolahan dapat mengakibatkan kerusakan lingkungan yang sulit dipulihkan, sehingga setiap karyawan perlu memahami pentingnya pengelolaan limbah cair sebelum dibuang ke lingkungan.',
+    blocks: [
+      {
+        type: 'image',
+        src: fotoLimbahCairCover,
+        alt: 'Limbah cair / waste water',
+        caption: 'Limbah cair adalah sisa proses produksi dan operasional yang berwujud cair',
+      },
+      {
+        type: 'list',
+        title: 'Mengapa Limbah Cair Harus Dikelola Sebelum Dibuang?',
+        items: [
+          'Dapat merusak ekosistem air sehingga mengancam kelangsungan hidup biota sungai',
+          'Sungai yang tercemar limbah cair menjadi sulit dikembalikan ke kondisi bersih semula',
+          'Dapat menimbulkan gangguan kesehatan dan berbagai penyakit bagi masyarakat sekitar',
+        ],
+      },
+      {
+        type: 'image',
+        src: fotoLimbahCairDampak,
+        alt: 'Dampak limbah cair pada sungai',
+        caption: 'Sungai yang tercemar limbah cair — dampak nyata bila limbah dibuang tanpa pengolahan',
+      },
+      {
+        type: 'list',
+        title: 'Peran Karyawan dalam Pengelolaan Limbah Cair',
+        items: [
+          'Tidak membuang cairan kimia, oli, atau bahan produksi langsung ke saluran air',
+          'Melaporkan segera bila ditemukan kebocoran atau tumpahan limbah cair',
+          'Memastikan limbah cair diproses melalui sistem pengolahan (WWTP) yang tersedia',
+          'Mendukung program monitoring kualitas air buangan secara berkala',
         ],
       },
     ],
   },
   {
     kode: 'L4',
-    nama: 'Limbah Cair',
-    warna: '#1F6B49',
-    tagline: 'Kelola sebelum dibuang ke lingkungan',
-    deskripsi:
-      'Limbah cair (waste water) adalah sisa dari suatu proses produksi dan operasional yang berwujud cair.',
-    blocks: [
-      {
-        type: 'image',
-        src: fotoLimbahCairDampak,
-        alt: 'Dampak limbah cair pada sungai',
-        caption: 'Sungai yang tercemar limbah cair sulit dikembalikan ke kondisi semula',
-      },
-      {
-        type: 'list',
-        title: 'Mengapa Harus Dikelola Sebelum Dibuang',
-        items: [
-          'Dapat merusak ekosistem air sehingga mengancam kelangsungan sungai',
-          'Sungai yang tercemar limbah cair menjadi sulit dikembalikan bersih',
-          'Dapat menimbulkan gangguan kesehatan dan berbagai penyakit',
-        ],
-      },
-    ],
-  },
-  {
-    kode: 'L5',
     nama: 'Segregasi Limbah',
     warna: '#4C9A6B',
     tagline: 'Pilah dari sumber, kelola lebih efisien',
     deskripsi:
-      'Segregasi limbah adalah upaya pemilahan limbah yang dihasilkan, dimulai dari hulu (produksi) hingga hilir (tempat pembuangan akhir), sesuai jenis dan karakteristiknya — agar proses pengolahan menjadi lebih tepat guna.',
+      'Segregasi limbah adalah upaya pemilahan limbah yang dihasilkan, dimulai dari hulu (produksi) hingga hilir (tempat pembuangan akhir), sesuai jenis dan karakteristiknya — agar proses pengolahan menjadi lebih tepat guna dan efisien.',
     blocks: [
       {
         type: 'list',
         title: 'Tujuan Segregasi Limbah',
         items: [
-          'Mengidentifikasi jenis sampah',
-          'Memisahkan berdasarkan sifat dan komposisi',
-          'Menjalankan prinsip 3R (Reduce, Reuse, Recycle)',
-          'Menggunakan tempat penyimpanan yang sesuai',
-          'Menumbuhkan kesadaran lingkungan',
+          'Mengidentifikasi jenis sampah sejak dari sumbernya',
+          'Memisahkan limbah berdasarkan sifat dan komposisinya',
+          'Menjalankan prinsip 3R (Reduce, Reuse, Recycle) secara konsisten',
+          'Menggunakan tempat penyimpanan yang sesuai untuk setiap jenis limbah',
+          'Menumbuhkan kesadaran lingkungan pada setiap individu di tempat kerja',
         ],
       },
       {
@@ -306,20 +263,28 @@ const TOPIK: Topik[] = [
         type: 'list',
         title: 'Teknik Pemilahan Sampah',
         items: [
-          'Sediakan tempat sampah yang memadai di setiap area',
-          'Beri label yang jelas pada setiap tempat sampah',
-          'Gunakan tempat sampah berwarna sesuai kategori limbah',
+          'Sediakan tempat sampah yang memadai di setiap area kerja',
+          'Beri label yang jelas pada setiap tempat sampah sesuai kategorinya',
+          'Gunakan tempat sampah berwarna sesuai kategori limbah yang berlaku',
+        ],
+      },
+      {
+        type: 'list',
+        title: 'Tujuan Segregasi/Pemilahan Sampah Secara Umum',
+        items: [
+          'Mengurangi volume sampah yang masuk ke Tempat Pembuangan Akhir (TPA)',
+          'Memungkinkan pengelolaan limbah yang lebih efisien dan berkelanjutan',
         ],
       },
     ],
   },
   {
-    kode: 'L6',
+    kode: 'L5',
     nama: 'Strategi & ESG',
     warna: '#1F5A52',
     tagline: 'Komitmen Zinus untuk planet masa depan',
     deskripsi:
-      'Zinus senantiasa memperhatikan keberlanjutan lingkungan demi memastikan masa depan planet, melalui perbaikan berkelanjutan seperti desain kemasan ramah lingkungan, pemasangan energi terbarukan, dan penggunaan kembali scrap foam menjadi produk visco-latex.',
+      'Zinus senantiasa memperhatikan keberlanjutan lingkungan demi memastikan masa depan planet, melalui perbaikan berkelanjutan seperti desain kemasan ramah lingkungan, pemasangan energi terbarukan, dan penggunaan kembali scrap foam menjadi produk visco-latex. Aspek Environment menjadi salah satu pilar utama dalam strategi ESG (Environmental, Social, Governance) Zinus.',
     blocks: [
       {
         type: 'image',
@@ -329,49 +294,31 @@ const TOPIK: Topik[] = [
       },
       {
         type: 'list',
-        title: 'Fokus Program Lingkungan',
+        title: 'Contoh Aksi Nyata Zinus',
         items: [
-          'Penanganan perubahan iklim dan masalah lingkungan utama',
-          'Pengelolaan residu dan pemanfaatan peluang lingkungan',
-          'Pelestarian lingkungan hidup dan keanekaragaman hayati',
-          'Kontribusi sosial untuk lingkungan sekitar perusahaan',
-          'Partisipasi aktif dalam proyek/inisiatif ramah lingkungan',
+          'Desain kemasan produk yang lebih ramah lingkungan (green packaging)',
+          'Instalasi sumber energi terbarukan di area produksi',
+          'Penggunaan kembali scrap foam menjadi produk visco-latex bernilai jual',
         ],
-      },
-    ],
-  },
-  {
-    kode: 'L7',
-    nama: 'Manajemen Bahan Kimia',
-    warna: '#13433D',
-    tagline: 'Kendalikan bahan kimia, lindungi semua orang',
-    deskripsi:
-      'Manajemen bahan kimia adalah upaya memastikan seluruh pengelolaan bahan kimia di perusahaan terkendali, sehingga tidak menimbulkan bahaya bagi karyawan maupun lingkungan.',
-    blocks: [
-      {
-        type: 'cards',
-        title: 'Bagaimana Caranya?',
-        items: [
-          { icon: '📋', judul: 'Sediakan MSDS', detail: 'MSDS tersedia di setiap area penyimpanan bahan kimia' },
-          { icon: '🧤', judul: 'Gunakan APD', detail: 'Gunakan APD yang sesuai saat menangani bahan kimia' },
-          { icon: '🚫', judul: 'Jaga Area Kerja', detail: 'Dilarang makan, minum, dan merokok di area bahan kimia' },
-          { icon: '📢', judul: 'Laporkan Segera', detail: 'Laporkan segera jika terjadi tumpahan atau kebocoran' },
-        ],
-      },
-      {
-        type: 'image',
-        src: fotoGhsBahanKimia,
-        alt: 'Simbol GHS pada bahan kimia',
-        caption: 'Implementasi simbol GHS pada kemasan bahan kimia',
       },
       {
         type: 'list',
-        title: 'RSL (Restricted Substance List)',
+        title: 'Fokus Program Lingkungan (Environmental Strategy & Program)',
         items: [
-          'RSL adalah daftar zat/bahan kimia yang penggunaan dan/atau keberadaannya dilarang atau dibatasi oleh suatu merek',
-          'Dibatasi karena kepedulian terhadap lingkungan',
-          'Dibatasi karena masalah kesehatan & keselamatan pekerja atau konsumen',
-          'Beberapa zat dibatasi langsung oleh undang-undang',
+          'Penanganan perubahan iklim dan masalah lingkungan utama perusahaan',
+          'Pengelolaan residu produksi serta pemanfaatan peluang lingkungan yang ada',
+          'Pelestarian lingkungan hidup dan keanekaragaman hayati di sekitar pabrik',
+          'Kontribusi sosial untuk lingkungan dan masyarakat sekitar perusahaan',
+          'Partisipasi aktif dalam proyek dan inisiatif ramah lingkungan jangka panjang',
+        ],
+      },
+      {
+        type: 'list',
+        title: 'Mengapa Ini Penting Bagi Karyawan?',
+        items: [
+          'Setiap individu adalah bagian dari pencapaian target ESG perusahaan',
+          'Kebiasaan kecil di tempat kerja (hemat air, energi, dan pemilahan sampah) berkontribusi langsung pada program ini',
+          'Mendukung citra perusahaan sebagai mitra bisnis yang bertanggung jawab terhadap lingkungan',
         ],
       },
     ],
@@ -595,17 +542,17 @@ export default function MateriLingkungan({ employeeName, onSelesai }: MateriLing
       style={{ background: '#2F7D52' }}
     >
       <p className="font-jakarta text-[10px] font-bold tracking-[0.18em] uppercase text-white/70">
-        Materi Training · Lingkungan
+        Materi Training · Kesadaran Lingkungan
       </p>
       <h1 className="font-playfair text-[clamp(28px,8vw,44px)] font-bold text-white leading-[1.15] tracking-tight">
-        Sistem Manajemen<br />
-        <em className="italic" style={{ color: '#C7EAD3' }}>Lingkungan</em> &amp;<br />
-        Bahan Kimia
+        Kesadaran<br />
+        <em className="italic" style={{ color: '#C7EAD3' }}>Lingkungan</em><br />
+        di Tempat Kerja
       </h1>
       <p className="font-jakarta text-sm text-white/90 leading-relaxed max-w-[300px]">
         {employeeName
           ? `Halo, ${employeeName}! Baca seluruh materi ini sebelum mengerjakan post-test.`
-          : 'Pelajari pengelolaan limbah, bahan kimia, dan kesadaran lingkungan di tempat kerja.'}
+          : 'Pelajari kebiasaan dan kesadaran lingkungan yang perlu diterapkan setiap hari di tempat kerja.'}
       </p>
       <div className="flex flex-wrap justify-center gap-1.5 mt-1">
         {TOPIK.map(t => (
@@ -641,6 +588,10 @@ export default function MateriLingkungan({ employeeName, onSelesai }: MateriLing
             </div>
           ))}
         </div>
+        <p className="font-jakarta text-xs leading-relaxed" style={{ color: '#5A8A86' }}>
+          Materi ini akan fokus membahas kesadaran dan kebiasaan sehari-hari terkait lingkungan. Khusus pembahasan mendalam
+          mengenai <strong>Limbah B3 dan Manajemen Bahan Kimia</strong> dibahas pada materi terpisah.
+        </p>
       </div>
     </div>
   )
@@ -671,7 +622,7 @@ export default function MateriLingkungan({ employeeName, onSelesai }: MateriLing
     </div>
   )
 
-  // ─── SLIDE 3..9: Topik ─────────────────────────────────────────────────────
+  // ─── SLIDE 3..7: Topik ─────────────────────────────────────────────────────
   const SlideTopik = ({ topik, idx }: { topik: Topik; idx: number }) => (
     <div key={`${slide}-${topik.kode}`} className="slide-anim flex flex-col flex-1 overflow-hidden">
       <div ref={innerRef} onScroll={handleScroll} className="no-scrollbar flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-4 max-w-[540px] w-full mx-auto">
@@ -711,7 +662,7 @@ export default function MateriLingkungan({ employeeName, onSelesai }: MateriLing
       <h2 className="font-playfair text-2xl font-bold" style={{ color: '#C7EAD3' }}>Materi Selesai!</h2>
       <p className="font-jakarta text-[13px] leading-relaxed max-w-[280px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
         {canFinish
-          ? 'Kamu sudah membaca semua materi Lingkungan & Bahan Kimia. Saatnya kerjakan Post-Test!'
+          ? 'Kamu sudah membaca semua materi Kesadaran Lingkungan. Saatnya kerjakan Post-Test!'
           : `Kamu sudah membaca ${progress}% materi. Pastikan semua slide sudah dibuka sebelum melanjutkan.`}
       </p>
       <button
