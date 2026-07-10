@@ -19,24 +19,19 @@ import {
   type Question,
   type ScoreResult,
 } from '@/components/public/quiz'
-import MateriCtpat from '@/pages/public/materi/MateriCtpat'
+import MateriLimbahB3 from '@/pages/public/materi/MateriLimbahB3'
 
-const TRAINING_CODE = 'CTPAT'
-
-// CTPAT mendukung NIK 8–15 digit (ada karyawan dengan NIK 8 digit dan ada 10–15)
-// Quiz lain cukup NIK_MIN = NIK_MAX = 8
-const NIK_MIN = 8
-const NIK_MAX = 15
+const TRAINING_CODE = 'LIMBAH'
 
 const QUIZ_CONFIG = {
   code: TRAINING_CODE,
-  title: 'Quiz CTPAT',
-  subtitle: 'C-TPAT Security Awareness',
+  title: 'Quiz Limbah B3',
+  subtitle: 'Pengelolaan Limbah Bahan Berbahaya & Beracun',
 } as const
 
 type Phase = 'nik' | 'pretest' | 'materi' | 'posttest'
 
-export default function CtpatQuiz() {
+export default function LimbahB3Quiz() {
   const navigate = useNavigate()
   const [phase, setPhase]           = useState<Phase>('nik')
   const [nik, setNik]               = useState('')
@@ -102,7 +97,7 @@ export default function CtpatQuiz() {
 
     const { data, error: qError } = await supabase
       .from('bank_soal')
-      .select('id,question_number,question_text,type,options,correct_answer')
+      .select('id, question_number, question_text, type, options, correct_answer')
       .eq('training_type_id', training.id)
       .eq('is_active', true)
       .eq('test_type', testType)
@@ -115,8 +110,7 @@ export default function CtpatQuiz() {
 
   // ── Fetch Employee & Validate Factory ────────────────────────
   const fetchEmployee = useCallback(async (searchNik: string) => {
-    // Validasi panjang NIK: harus antara NIK_MIN dan NIK_MAX
-    if (searchNik.length < NIK_MIN || searchNik.length > NIK_MAX) {
+    if (searchNik.length !== 8) {
       setEmployee(null)
       setPreQuestions([])
       setPostQuestions([])
@@ -127,28 +121,19 @@ export default function CtpatQuiz() {
     setError('')
 
     try {
-      const { data: employees, error: dbError } = await withMinDelay(
+      const { data, error: dbError } = await withMinDelay(
         supabase
           .from('karyawan')
-          .select('nik,nama,department,factory')
+          .select('nik, nama, department, factory')
           .eq('nik', searchNik.trim())
-          .limit(1),
+          .single(),
         1200
       )
 
-      if (dbError) throw dbError
-
-      const data = employees?.[0]
-
-      if (!data) {
+      if (dbError || !data) {
         setEmployee(null)
         setPreQuestions([])
         setPostQuestions([])
-
-        // Tampilkan error hanya jika NIK sudah di panjang maksimal (15),
-        // atau jika user submit manual (NIK 8–14 digit via tombol Cari).
-        // Dalam kedua kasus, kita tampilkan error karena user sudah
-        // secara eksplisit "selesai" memasukkan NIK mereka.
         setError('NIK tidak ditemukan. Periksa kembali nomor Anda.')
         setPendingError(true)
         return
@@ -188,7 +173,7 @@ export default function CtpatQuiz() {
       // 2. CEK PRE-TEST: Jika sudah pernah, bypass ke Materi
       const { data: preTestRecord, error: preError } = await supabase
         .from('hasil_ujian')
-        .select('score,total_questions,correct_count')
+        .select('score, total_questions, correct_count')
         .eq('nik', data.nik)
         .eq('training_type_id', training.id)
         .eq('test_type', 'pre')
@@ -234,14 +219,12 @@ export default function CtpatQuiz() {
     }
   }, [quizSchedule, loadQuestions])
 
-  // Dipanggil NIKForm setelah popup verifikasi selesai animasi & ketutup.
-  // Baru di sini kita boleh nampilin ErrorModal, biar gak nembus di belakang popup.
-  const handleVerificationDone = () => {
-    if (pendingError) {
-      setShowErrorModal(true)
-      setPendingError(false)
-    }
-  }
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (nik.length === 8) fetchEmployee(nik)
+    }, 500)
+    return () => clearTimeout(t)
+  }, [nik, fetchEmployee])
 
   // ── Submit Pre-Test → pindah ke Materi ───────────────────────
   const handleSubmitPre = async () => {
@@ -342,6 +325,15 @@ export default function CtpatQuiz() {
     }
   }
 
+  // Dipanggil NIKForm setelah popup verifikasi selesai animasi & ketutup.
+  // Baru di sini kita boleh nampilin ErrorModal, biar gak nembus di belakang popup.
+  const handleVerificationDone = () => {
+    if (pendingError) {
+      setShowErrorModal(true)
+      setPendingError(false)
+    }
+  }
+
   const handleReset = () => {
     setPhase('nik')
     setNik('')
@@ -354,7 +346,6 @@ export default function CtpatQuiz() {
     setPreResult(null)
     setError('')
     setShowErrorModal(false)
-    setPendingError(false)
     setShowResultModal(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -381,9 +372,6 @@ export default function CtpatQuiz() {
               quizName={QUIZ_CONFIG.title}
               quizSchedule={quizSchedule}
               scheduleLoading={scheduleLoading}
-              // CTPAT: NIK bisa 8 hingga 15 digit
-              nikMin={NIK_MIN}
-              nikMax={NIK_MAX}
               nik={nik}
               onChange={setNik}
               onSubmit={fetchEmployee}
@@ -421,7 +409,7 @@ export default function CtpatQuiz() {
           )}
 
           {phase === 'materi' && (
-            <MateriCtpat
+            <MateriLimbahB3
               employeeName={employee?.nama}
               onSelesai={() => {
                 setPhase('posttest')
@@ -487,8 +475,8 @@ export default function CtpatQuiz() {
 // ── Phase Indicator ───────────────────────────────────────────────────────────
 
 const PHASES = [
-  { key: 'pretest',  label: 'Pre-Test'  },
-  { key: 'materi',   label: 'Materi'    },
+  { key: 'pretest',  label: 'Pre-Test' },
+  { key: 'materi',   label: 'Materi'   },
   { key: 'posttest', label: 'Post-Test' },
 ]
 
@@ -516,7 +504,7 @@ function PhaseIndicator({ current }: { current: 'pretest' | 'materi' | 'posttest
                   isDone
                     ? 'bg-emerald-600 text-white'
                     : isActive
-                    ? 'bg-[#E85D26] text-white'
+                    ? 'bg-[#2F7D52] text-white'
                     : 'bg-[#E8E0D5] text-[#9C8D7E]',
                 ].join(' ')}
               >

@@ -28,14 +28,16 @@ interface ParticipantRow {
   factory: number | null
   pre: TestResult | null
   post: TestResult | null
+  isOrphan: boolean
 }
 
 // Raw row from Supabase
 
 const FACTORIES = [
-  { key: 'all',   label: 'Semua Factory',          short: 'Semua' },
-  { key: '1',     label: 'Zinus Global Indonesia',  short: 'Global' },
-  { key: '2',     label: 'Zinus Dream Indonesia',   short: 'Dream' },
+  { key: 'all', label: 'Semua Factory',                    short: 'Semua' },
+  { key: '1',   label: 'Zinus Global Indonesia',            short: 'ZGI'   },
+  { key: '2',   label: 'Zinus Global Indonesia - Karawang', short: 'ZGK'   },
+  { key: '3',   label: 'Zinus Dream Indonesia',             short: 'ZDI'   },
 ] as const
 type FactoryKey = typeof FACTORIES[number]['key']
 
@@ -74,13 +76,33 @@ function TestStatusCell({ result }: { result: TestResult | null }) {
   )
 }
 
+const FACTORY_CHIP_STYLE: Record<number, { label: string; className: string }> = {
+  1: { label: 'ZGI', className: 'bg-teal-50 text-teal-600 border-teal-100' },
+  2: { label: 'ZGK', className: 'bg-sky-50 text-sky-600 border-sky-100' },
+  3: { label: 'ZDI', className: 'bg-indigo-50 text-indigo-600 border-indigo-100' },
+}
+
 function FactoryChip({ factory }: { factory: number | null }) {
   if (factory == null)
     return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-500">—</span>
-  return factory === 1 ? (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-teal-50 text-teal-600 border border-teal-100">Global</span>
-  ) : (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100">Dream</span>
+  const style = FACTORY_CHIP_STYLE[factory]
+  if (!style)
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-100 text-gray-500">F{factory}</span>
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${style.className}`}>
+      {style.label}
+    </span>
+  )
+}
+
+function OrphanBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      NIK Tidak Ditemukan
+    </span>
   )
 }
 
@@ -247,6 +269,17 @@ function ModalDetail({
         </div>
 
         <div className="px-6 py-5 space-y-5">
+          {row.isOrphan && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-100">
+              <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-xs text-amber-700">
+                <span className="font-semibold">NIK {row.nik} tidak ditemukan</span> di data master karyawan — nama & departemen tidak bisa ditampilkan.
+              </p>
+            </div>
+          )}
+
           {/* Info grid */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             {[
@@ -336,6 +369,7 @@ export default function HasilUjian() {
   const [search, setSearch]             = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'passed' | 'failed' | 'incomplete'>('all')
   const [filterDept, setFilterDept]     = useState<string>('all')
+  const [showOrphansOnly, setShowOrphansOnly] = useState(false)
 
   const showToast = (type: 'success' | 'error', msg: string) => {
     setToast({ type, msg })
@@ -369,13 +403,25 @@ export default function HasilUjian() {
       setLoadingResults(true)
       setRows([])
 
+      // PENTING: kalau lagi filter factory spesifik, join karyawan HARUS
+      // pakai `!inner`. Tanpa itu, filter `.eq('karyawan.factory', ...)`
+      // cuma bikin hasil join-nya jadi null untuk baris yang gak cocok —
+      // baris hasil_ujian-nya sendiri TETAP muncul (PostgREST gak exclude
+      // parent row pada left-join embed). Efeknya: pilih filter "Dream"
+      // tapi baris "Global" tetap nongol, cuma nama/departemen-nya jadi
+      // kosong (ketuker seolah-olah "data rusak").
+      // Saat "Semua Factory" dipilih, tetap pakai left join biasa supaya
+      // baris yang NIK-nya benar2 gak ada di master karyawan (orphan)
+      // tetap kelihatan untuk ditelusuri, bukan didiemin begitu saja.
+      const karyawanEmbed = activeFactory !== 'all' ? 'karyawan:nik!inner' : 'karyawan:nik'
+
       let query = supabase
         .from('hasil_ujian')
         .select(`
           id, nik, training_type_id, score, correct_count,
           total_questions, user_answers, submitted_at, test_type,
           pdf_id,
-          karyawan:nik ( nama, department, factory )
+          ${karyawanEmbed} ( nama, department, factory )
         `)
         .eq('training_type_id', activeTab)
         .order('submitted_at', { ascending: false })
@@ -400,6 +446,7 @@ export default function HasilUjian() {
             factory: k?.factory ?? null,
             pre: null,
             post: null,
+            isOrphan: !k,
           })
         }
         const row = map.get(nik)!
@@ -424,6 +471,7 @@ export default function HasilUjian() {
 
   // Derived departments list for dropdown
   const departments = Array.from(new Set(rows.map((r) => r.department).filter(Boolean) as string[])).sort()
+  const orphanCount = rows.filter((r) => r.isOrphan).length
 
   // Derived filter
   const filtered = rows.filter((r) => {
@@ -440,7 +488,9 @@ export default function HasilUjian() {
       filterStatus === 'passed'     ? (r.post?.status === 'passed') :
                                       (r.post?.status === 'failed')
 
-    return matchSearch && matchDept && matchStatus
+    const matchOrphan = !showOrphansOnly || r.isOrphan
+
+    return matchSearch && matchDept && matchStatus && matchOrphan
   })
 
   const activeTraining = trainingTypes.find((t) => t.id === activeTab)
@@ -517,7 +567,7 @@ export default function HasilUjian() {
   }, [])
 
   const resetFilters = () => {
-    setSearch(''); setFilterStatus('all'); setFilterDept('all')
+    setSearch(''); setFilterStatus('all'); setFilterDept('all'); setShowOrphansOnly(false)
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -588,15 +638,11 @@ export default function HasilUjian() {
             ) : (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-400">Factory</span>
-                {activeFactory === '1' ? (
+                {activeFactory !== 'all' && (
                   <span className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-600 border border-teal-100">
-                    Zinus Global Indonesia
+                    {FACTORIES.find((f) => f.key === activeFactory)?.label ?? `Factory ${activeFactory}`}
                   </span>
-                ) : activeFactory === '2' ? (
-                  <span className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
-                    Zinus Dream Indonesia
-                  </span>
-                ) : null}
+                )}
               </div>
             )}
           </div>
@@ -640,6 +686,27 @@ export default function HasilUjian() {
               </div>
             ))}
           </div>
+
+          {/* ── Orphan warning banner ── */}
+          {orphanCount > 0 && (
+            <button
+              onClick={() => setShowOrphansOnly((v) => !v)}
+              className="w-full anim-fadein flex items-center gap-3 p-3 rounded-xl border text-left transition-colors"
+              style={showOrphansOnly
+                ? { background: '#fffbeb', borderColor: '#fde68a' }
+                : { background: '#fffbeb', borderColor: '#fef3c7' }}
+            >
+              <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-xs text-amber-700 flex-1">
+                <span className="font-semibold">{orphanCount} baris</span> punya NIK yang tidak ditemukan di data master karyawan — nama & departemen tidak bisa ditampilkan.
+              </p>
+              <span className="text-[11px] font-semibold text-amber-700 underline shrink-0">
+                {showOrphansOnly ? 'Tampilkan semua' : 'Tampilkan yang ini saja'}
+              </span>
+            </button>
+          )}
 
           {/* ── Toolbar ── */}
           <div className="flex flex-wrap items-center gap-3 anim-fadein">
@@ -760,7 +827,10 @@ export default function HasilUjian() {
                         return (
                           <tr key={r.nik}
                             className="hover:bg-gray-50/70 transition-colors anim-fadein"
-                            style={{ animationDelay: `${i * 20}ms`, animationFillMode: 'both' }}>
+                            style={{
+                              animationDelay: `${i * 20}ms`, animationFillMode: 'both',
+                              background: r.isOrphan ? '#fffbeb' : undefined,
+                            }}>
 
                             <td className="px-4 py-4 text-gray-400 text-xs font-medium">{i + 1}</td>
 
@@ -769,8 +839,14 @@ export default function HasilUjian() {
                             </td>
 
                             <td className="px-4 py-4">
-                              <p className="text-gray-700 font-medium text-sm">{r.participant_name}</p>
-                              {r.department && <p className="text-gray-400 text-[11px] mt-0.5">{r.department}</p>}
+                              {r.isOrphan ? (
+                                <OrphanBadge />
+                              ) : (
+                                <>
+                                  <p className="text-gray-700 font-medium text-sm">{r.participant_name}</p>
+                                  {r.department && <p className="text-gray-400 text-[11px] mt-0.5">{r.department}</p>}
+                                </>
+                              )}
                             </td>
 
                             <td className="px-4 py-4 text-center">

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { withMinDelay } from '@/lib/withMinDelay'
 import { checkFactoryAccess } from '@/lib/quiz-status'
 import type { QuizSchedule } from '@/lib/quiz-status'
 import {
@@ -30,6 +32,7 @@ const QUIZ_CONFIG = {
 type Phase = 'nik' | 'pretest' | 'materi' | 'posttest'
 
 export default function FiveRQuiz() {
+  const navigate = useNavigate()
   const [phase, setPhase]           = useState<Phase>('nik')
   const [nik, setNik]               = useState('')
   const [employee, setEmployee]     = useState<Employee | null>(null)
@@ -46,6 +49,7 @@ export default function FiveRQuiz() {
   const [submitting, setSubmitting] = useState(false)
 
   const [showErrorModal, setShowErrorModal]   = useState(false)
+  const [pendingError, setPendingError]       = useState(false)
   const [showResultModal, setShowResultModal] = useState(false)
 
   const [quizSchedule, setQuizSchedule]       = useState<QuizSchedule | null>(null)
@@ -117,25 +121,28 @@ export default function FiveRQuiz() {
     setError('')
 
     try {
-      const { data, error: dbError } = await supabase
-        .from('karyawan')
-        .select('nik, nama, department, factory')
-        .eq('nik', searchNik.trim())
-        .single()
+      const { data, error: dbError } = await withMinDelay(
+        supabase
+          .from('karyawan')
+          .select('nik, nama, department, factory')
+          .eq('nik', searchNik.trim())
+          .single(),
+        1200
+      )
 
       if (dbError || !data) {
         setEmployee(null)
         setPreQuestions([])
         setPostQuestions([])
         setError('NIK tidak ditemukan. Periksa kembali nomor Anda.')
-        setShowErrorModal(true)
+        setPendingError(true)
         return
       }
 
       const access = checkFactoryAccess(quizSchedule, data.factory)
       if (!access.allowed) {
         setError(access.reason || 'Akses ditolak untuk factory Anda')
-        setShowErrorModal(true)
+        setPendingError(true)
         return
       }
 
@@ -158,7 +165,7 @@ export default function FiveRQuiz() {
 
       if (postTestRecord) {
         setError('Anda sudah menyelesaikan Post-Test untuk training ini. Tidak dapat mengulang.')
-        setShowErrorModal(true)
+        setPendingError(true)
         setEmployee(null)
         return
       }
@@ -206,7 +213,7 @@ export default function FiveRQuiz() {
       setEmployee(null)
       setPreQuestions([])
       setPostQuestions([])
-      setShowErrorModal(true)
+      setPendingError(true)
     } finally {
       setSearching(false)
     }
@@ -218,6 +225,15 @@ export default function FiveRQuiz() {
     }, 500)
     return () => clearTimeout(t)
   }, [nik, fetchEmployee])
+
+  // Dipanggil NIKForm setelah popup verifikasi selesai animasi & ketutup.
+  // Baru di sini kita boleh nampilin ErrorModal, biar gak nembus di belakang popup.
+  const handleVerificationDone = () => {
+    if (pendingError) {
+      setShowErrorModal(true)
+      setPendingError(false)
+    }
+  }
 
   // ── Submit Pre-Test → pindah ke Materi ───────────────────────
   const handleSubmitPre = async () => {
@@ -330,6 +346,7 @@ export default function FiveRQuiz() {
     setPreResult(null)
     setError('')
     setShowErrorModal(false)
+    setPendingError(false)
     setShowResultModal(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -362,6 +379,7 @@ export default function FiveRQuiz() {
               searching={searching}
               found={!!employee}
               error={error}
+              onVerificationDone={handleVerificationDone}
             />
           )}
 
@@ -439,7 +457,11 @@ export default function FiveRQuiz() {
         {result && (
           <ResultModal
             isOpen={showResultModal}
-            onClose={() => setShowResultModal(false)}
+            onClose={() => {
+              setShowResultModal(false)
+              handleReset()
+              navigate('/quiz')
+            }}
             onReset={handleReset}
             result={result}
             preResult={preResult}

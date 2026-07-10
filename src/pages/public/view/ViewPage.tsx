@@ -98,8 +98,8 @@ const TRAININGS: { code: string; label: string; desc: string; Icon: React.FC<{ c
   { code: 'LIMBAH',     label: 'Limbah B3',            desc: 'Klasifikasi dan penanganan limbah berbahaya',           Icon: IconRecycle },
   { code: 'CTPAT',      label: 'C-TPAT',               desc: 'Customs-Trade Partnership Against Terrorism',          Icon: IconShield },
   { code: 'CONDUCT',    label: 'Code of Conduct',      desc: 'Etika & tata perilaku karyawan',                       Icon: IconScroll },
-  { code: 'PROFILE',    label: 'Company Profile',      desc: 'Pengenalan perusahaan & struktur organisasi',          Icon: IconBuilding },
-  { code: 'LINGKUNGAN', label: 'Kesadaran Lingkungan', desc: 'Pengelolaan limbah & lingkungan hidup',                Icon: IconLeaf },
+  { code: 'COMPANY_PROFILE',    label: 'Company Profile',      desc: 'Pengenalan perusahaan & struktur organisasi',          Icon: IconBuilding },
+  { code: 'KESADARAN_LINGKUNGAN', label: 'Kesadaran Lingkungan', desc: 'Pengelolaan limbah & lingkungan hidup',                Icon: IconLeaf },
 ]
 
 // ── Component ─────────────────────────────────────────────────────────────────

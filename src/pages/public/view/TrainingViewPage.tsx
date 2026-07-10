@@ -3,8 +3,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 
-const PAGE_SIZE = 20
-
 const FACTORY_MAP: Record<number, { name: string; short: string; color: string; bg: string }> = {
   1: { name: 'Zinus Global Indonesia',            short: 'ZGI', color: '#329F96', bg: '#e6f7f6' },
   2: { name: 'Zinus Global Indonesia – Karawang', short: 'ZGK', color: '#0ea5e9', bg: '#e0f2fe' },
@@ -20,21 +18,53 @@ const TRAINING_META: Record<string, { label: string; color: string }> = {
   'lingkungan': { label: 'Kesadaran Lingkungan', color: '#10b981' },
 }
 
-// One raw row per test_type entry
 interface RawRow {
   nik: string
-  nama: string
   department: string | null
   test_type: 'pre' | 'post' | null
 }
 
-// Merged per-employee
-interface EmployeeRow {
-  nik: string
-  nama: string
-  department: string
-  hasPre: boolean
-  hasPost: boolean
+interface DeptSummary {
+  dept: string
+  total: number
+  bothDone: number
+  preOnly: number
+  noneYet: number
+  pct: number
+}
+
+// Supabase/PostgREST caps a single request at 1000 rows by default.
+// If we don't page through results explicitly, rows silently get
+// truncated — which is exactly what caused "post sudah nyala tapi
+// pre-nya masih abu-abu": the missing pre-test row just never arrived.
+const FETCH_CHUNK = 1000
+
+async function fetchAllRows(factoryId: number, trainingCode: string): Promise<RawRow[]> {
+  let all: RawRow[] = []
+  let from = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('v_status_quiz_pegawai')
+      .select('nik, department, test_type')
+      .eq('factory', factoryId)
+      .eq('training_code', trainingCode.toUpperCase())
+      .order('nik', { ascending: true })
+      .range(from, from + FETCH_CHUNK - 1)
+
+    if (error) {
+      console.error('fetchAllRows error:', error)
+      break
+    }
+
+    const chunk = data ?? []
+    all = all.concat(chunk)
+
+    if (chunk.length < FETCH_CHUNK) break // last page reached
+    from += FETCH_CHUNK
+  }
+
+  return all
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -49,22 +79,9 @@ const IconSearch = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
   </svg>
 )
-const IconChevLeft = () => (
-  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-  </svg>
-)
 const IconChevRight = () => (
-  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-  </svg>
-)
-const IconChevDown = ({ open }: { open: boolean }) => (
-  <svg
-    width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
-    style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0)' }}
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
   </svg>
 )
 const IconTraining = ({ color }: { color: string }) => (
@@ -74,144 +91,11 @@ const IconTraining = ({ color }: { color: string }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6M9 16h4" />
   </svg>
 )
-const IconUsers = () => (
-  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+const IconFolder = ({ color }: { color: string }) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <path d="M3 7C3 5.9 3.9 5 5 5H10L12 7H19C20.1 7 21 7.9 21 9V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V7Z" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
   </svg>
 )
-const IconCheck = () => (
-  <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-  </svg>
-)
-const IconMinus = () => (
-  <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
-  </svg>
-)
-const IconProfile = ({ color }: { color: string }) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="8" r="3.5" fill={color} fillOpacity="0.18" stroke={color} strokeWidth="1.6"/>
-    <path d="M4.5 19.5C4.5 16.46 7.96 14 12 14C16.04 14 19.5 16.46 19.5 19.5" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
-  </svg>
-)
-
-// ── Test type badge ───────────────────────────────────────────────────────────
-const TestBadge = ({ type, done }: { type: 'pre' | 'post'; done: boolean }) => {
-  const isGreen = done
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '3px 9px', borderRadius: 50, fontSize: 11, fontWeight: 700,
-      background: isGreen ? (type === 'pre' ? '#dcfce7' : '#dbeafe') : '#f1f5f9',
-      color: isGreen ? (type === 'pre' ? '#16a34a' : '#2563eb') : '#94a3b8',
-      border: `1.5px solid ${isGreen ? (type === 'pre' ? '#bbf7d0' : '#bfdbfe') : '#e2e8f0'}`,
-    }}>
-      {done ? <IconCheck /> : <IconMinus />}
-      {type === 'pre' ? 'Pre' : 'Post'}
-    </span>
-  )
-}
-
-// ── Department Accordion ──────────────────────────────────────────────────────
-function DeptAccordion({
-  dept, rows, color, defaultOpen,
-}: {
-  dept: string
-  rows: EmployeeRow[]
-  color: string
-  defaultOpen: boolean
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-
-  const bothDone    = rows.filter(r => r.hasPre && r.hasPost).length
-  const preOnly     = rows.filter(r => r.hasPre && !r.hasPost).length
-  const noneYet     = rows.filter(r => !r.hasPre && !r.hasPost).length
-  const pct         = rows.length > 0 ? Math.round((bothDone / rows.length) * 100) : 0
-
-  useEffect(() => { setOpen(defaultOpen) }, [defaultOpen])
-
-  return (
-    <div className="tvp-dept">
-      {/* Header row */}
-      <button
-        className="tvp-dept-header"
-        onClick={() => setOpen(v => !v)}
-      >
-        {/* Left: chevron + dept name */}
-        <span className="tvp-dept-chev" style={{ color }}>
-          <IconChevDown open={open} />
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <span className="tvp-dept-name">{dept}</span>
-          <span className="tvp-dept-count">{rows.length} karyawan</span>
-        </div>
-
-        {/* Progress */}
-        <div className="tvp-dept-progress">
-          <div className="tvp-dept-progress-bar">
-            <div style={{
-              height: '100%', borderRadius: 50, transition: 'width 0.6s ease',
-              background: pct === 100 ? '#10b981' : color,
-              width: `${pct}%`,
-            }} />
-          </div>
-          <span style={{ fontSize: 11, fontWeight: 700, color, minWidth: 32, textAlign: 'right' }}>
-            {pct}%
-          </span>
-        </div>
-
-        {/* Mini badges */}
-        <div className="tvp-dept-badges">
-          <span className="tvp-stat-pill tvp-pill-green">{bothDone} selesai</span>
-          {preOnly > 0 && <span className="tvp-stat-pill tvp-pill-blue">{preOnly} pre</span>}
-          {noneYet > 0 && <span className="tvp-stat-pill tvp-pill-gray">{noneYet} belum</span>}
-        </div>
-      </button>
-
-      {/* Employee list */}
-      {open && (
-        <div className="tvp-emp-list">
-          {/* thead */}
-          <div className="tvp-emp-thead">
-            <span style={{ width: 28, textAlign: 'center' }}>#</span>
-            <span style={{ width: 90 }}>NIK</span>
-            <span style={{ flex: 1 }}>Nama</span>
-            <span style={{ width: 60, textAlign: 'center' }}>Pre</span>
-            <span style={{ width: 60, textAlign: 'center' }}>Post</span>
-          </div>
-
-          {rows.map((row, i) => (
-            <div
-              key={row.nik}
-              className="tvp-emp-row"
-              style={{ borderBottom: i < rows.length - 1 ? '1px solid #f8fdfc' : 'none' }}
-            >
-              <span style={{ width: 28, textAlign: 'center', fontSize: 11, color: '#d1d5db', fontWeight: 600 }}>
-                {i + 1}
-              </span>
-              <span style={{ width: 90 }}>
-                <code className="tvp-nik">{row.nik}</code>
-              </span>
-              <span style={{ flex: 1, fontWeight: 600, fontSize: 13, color: '#1a2e2d', display: 'flex', alignItems: 'center', gap: 7 }}>
-                <IconProfile color={color} />
-                {row.nama}
-              </span>
-              <span style={{ width: 60, textAlign: 'center' }}>
-                <TestBadge type="pre" done={row.hasPre} />
-              </span>
-              <span style={{ width: 60, textAlign: 'center' }}>
-                <TestBadge type="post" done={row.hasPost} />
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function TrainingViewPage() {
@@ -223,97 +107,67 @@ export default function TrainingViewPage() {
   const fac  = FACTORY_MAP[factoryId]
   const meta = TRAINING_META[trainingCode.toLowerCase()] ?? { label: trainingCode.toUpperCase(), color: '#329F96' }
 
-  const [allRows, setAllRows]   = useState<EmployeeRow[]>([])
-  const [total, setTotal]       = useState(0)
-  const [page, setPage]         = useState(1)
-  const [search, setSearch]     = useState('')
-  const [filter, setFilter]     = useState<'all' | 'done' | 'pre' | 'none'>('all')
-  const [loading, setLoading]   = useState(true)
-  const [openAll, setOpenAll]   = useState(true)
+  const [depts, setDepts]     = useState<DeptSummary[]>([])
+  const [search, setSearch]   = useState('')
+  const [loading, setLoading] = useState(true)
 
-  const fetchData = useCallback(async (pg: number, q: string, fil: string) => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
-    const from = (pg - 1) * PAGE_SIZE
-    const to   = from + PAGE_SIZE - 1
 
-    // Fetch raw rows (each row = one test_type entry per employee)
-    let query = supabase
-      .from('v_status_quiz_pegawai')
-      .select('nik, nama, department, test_type', { count: 'exact' })
-      .eq('factory', factoryId)
-      .eq('training_code', trainingCode.toUpperCase())
-      .order('department', { ascending: true })
-      .order('nama',       { ascending: true })
-      .range(from, to)
+    const raw = await fetchAllRows(factoryId, trainingCode)
 
-    if (q.trim()) {
-      query = query.or(`nama.ilike.%${q.trim()}%,nik.ilike.%${q.trim()}%,department.ilike.%${q.trim()}%`)
-    }
-
-    const { data, count } = await query
-    const raw: RawRow[] = data ?? []
-
-    // Merge rows by NIK
-    const byNik: Record<string, EmployeeRow> = {}
+    // Merge per NIK dulu — satu karyawan bisa punya baris 'pre' dan 'post'
+    // terpisah, jadi status pre/post-nya harus digabung dulu sebelum
+    // dikelompokkan per department, biar gak ada yang "setengah" data.
+    // department juga di-trim, dan kalau baris pertama untuk NIK itu
+    // kebetulan department-nya kosong/null, tetap coba ambil dari baris
+    // berikutnya yang punya nilai — supaya karyawan gak "hilang" ke bucket
+    // Tidak Terdaftar gara-gara satu baris doang yang null.
+    const byNik: Record<string, { department: string; hasPre: boolean; hasPost: boolean }> = {}
     for (const r of raw) {
+      const rawDept = (r.department ?? '').trim()
       if (!byNik[r.nik]) {
-        byNik[r.nik] = {
-          nik: r.nik,
-          nama: r.nama,
-          department: r.department ?? 'Tidak Terdaftar',
-          hasPre: false,
-          hasPost: false,
-        }
+        byNik[r.nik] = { department: rawDept, hasPre: false, hasPost: false }
+      } else if (!byNik[r.nik].department && rawDept) {
+        byNik[r.nik].department = rawDept
       }
       if (r.test_type === 'pre')  byNik[r.nik].hasPre  = true
       if (r.test_type === 'post') byNik[r.nik].hasPost = true
     }
 
-    let merged = Object.values(byNik)
+    // Group jadi summary per department. Dikelompokkan pakai key yang
+    // dinormalisasi (trim + uppercase) supaya "BONDING", "Bonding ", dan
+    // " bonding" dianggap department yang SAMA, bukan tiga bucket
+    // berbeda yang bikin total per-department jadi salah/kepecah.
+    const byDept: Record<string, DeptSummary> = {}
+    for (const emp of Object.values(byNik)) {
+      const label = emp.department || 'Tidak Terdaftar'
+      const key = label.toUpperCase()
+      if (!byDept[key]) byDept[key] = { dept: label, total: 0, bothDone: 0, preOnly: 0, noneYet: 0, pct: 0 }
+      byDept[key].total++
+      if (emp.hasPre && emp.hasPost) byDept[key].bothDone++
+      else if (emp.hasPre) byDept[key].preOnly++
+      else byDept[key].noneYet++
+    }
 
-    // Client-side filter after merge
-    if (fil === 'done') merged = merged.filter(r => r.hasPre && r.hasPost)
-    if (fil === 'pre')  merged = merged.filter(r => r.hasPre && !r.hasPost)
-    if (fil === 'none') merged = merged.filter(r => !r.hasPre && !r.hasPost)
+    const list = Object.values(byDept)
+      .map(d => ({ ...d, pct: d.total > 0 ? Math.round((d.bothDone / d.total) * 100) : 0 }))
+      .sort((a, b) => a.dept.localeCompare(b.dept))
 
-    setAllRows(merged)
-    setTotal(count ?? 0)
+    setDepts(list)
     setLoading(false)
   }, [factoryId, trainingCode])
 
-  useEffect(() => { fetchData(page, search, filter) }, [page, search, filter, fetchData])
+  useEffect(() => { fetchData() }, [fetchData])
 
-  const handleSearch = (q: string) => { setSearch(q); setPage(1) }
-  const handleFilter = (f: typeof filter) => { setFilter(f); setPage(1) }
+  const filteredDepts = depts.filter(d => d.dept.toLowerCase().includes(search.trim().toLowerCase()))
+  const totalEmployees = depts.reduce((sum, d) => sum + d.total, 0)
+  const totalDone = depts.reduce((sum, d) => sum + d.bothDone, 0)
+  const donePct = totalEmployees > 0 ? Math.round((totalDone / totalEmployees) * 100) : 0
 
-  // Group by department
-  const grouped = allRows.reduce<Record<string, EmployeeRow[]>>((acc, row) => {
-    if (!acc[row.department]) acc[row.department] = []
-    acc[row.department].push(row)
-    return acc
-  }, {})
-  const deptKeys = Object.keys(grouped).sort()
-
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const bothDoneCount = allRows.filter(r => r.hasPre && r.hasPost).length
-  const donePct = allRows.length > 0 ? Math.round((bothDoneCount / allRows.length) * 100) : 0
-
-  const getPages = () => {
-    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
-    const pages: (number | '...')[] = [1]
-    if (page > 3) pages.push('...')
-    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i)
-    if (page < totalPages - 2) pages.push('...')
-    pages.push(totalPages)
-    return pages
+  const goToDept = (dept: string) => {
+    navigate(`/view/${trainingCode}/${encodeURIComponent(dept)}?factory=${factoryId}`)
   }
-
-  const filterTabs: { key: typeof filter; label: string }[] = [
-    { key: 'all',  label: 'Semua'       },
-    { key: 'done', label: 'Pre & Post'  },
-    { key: 'pre',  label: 'Pre Saja'    },
-    { key: 'none', label: 'Belum Ujian' },
-  ]
 
   return (
     <>
@@ -329,7 +183,6 @@ export default function TrainingViewPage() {
           background: #f0f4f8;
         }
 
-        /* Skeleton */
         .skel {
           background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
           background-size: 800px 100%;
@@ -337,115 +190,33 @@ export default function TrainingViewPage() {
           border-radius: 6px;
         }
 
-        /* Dept accordion */
-        .tvp-dept {
-          background: white;
-          border-radius: 14px;
-          overflow: hidden;
-          border: 1px solid #f1f5f9;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-          animation: fadeUp 0.3s ease both;
-        }
-        .tvp-dept-header {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 13px 16px;
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-family: inherit;
-          text-align: left;
-          transition: background 0.12s;
-        }
-        .tvp-dept-header:hover { background: #f8fdfc; }
-        .tvp-dept-chev { flex-shrink: 0; display: flex; align-items: center; }
-        .tvp-dept-name {
-          font-size: 13.5px;
-          font-weight: 700;
-          color: #1a2e2d;
-          margin-right: 8px;
-        }
-        .tvp-dept-count {
-          font-size: 11px;
-          color: #94a3b8;
-        }
-        .tvp-dept-progress {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          width: 110px;
-          flex-shrink: 0;
-        }
-        .tvp-dept-progress-bar {
-          flex: 1;
-          height: 5px;
-          border-radius: 50px;
-          background: #f1f5f9;
-          overflow: hidden;
-        }
-        .tvp-dept-badges {
-          display: flex;
-          gap: 5px;
-          flex-shrink: 0;
-        }
-        .tvp-stat-pill {
-          font-size: 11px;
-          font-weight: 700;
-          padding: 3px 8px;
-          border-radius: 50px;
-        }
-        .tvp-pill-green { background: #dcfce7; color: #16a34a; }
-        .tvp-pill-blue  { background: #dbeafe; color: #2563eb; }
-        .tvp-pill-gray  { background: #f1f5f9; color: #94a3b8; }
-
-        /* Employee list */
-        .tvp-emp-list {
-          border-top: 1px solid #f1f5f9;
-        }
-        .tvp-emp-thead {
-          display: flex;
-          align-items: center;
-          gap: 0;
-          padding: 8px 16px;
-          background: #fafcfc;
-          border-bottom: 1px solid #f1f5f9;
-          font-size: 10px;
-          font-weight: 700;
-          color: #b0bec5;
-          text-transform: uppercase;
-          letter-spacing: 0.8px;
-        }
-        .tvp-emp-row {
-          display: flex;
-          align-items: center;
-          gap: 0;
-          padding: 10px 16px;
-          transition: background 0.1s;
-          font-size: 13px;
-          color: #475569;
-        }
-        .tvp-emp-row:hover { background: #f8fdfc; }
-        .tvp-nik {
-          font-family: 'DM Mono', monospace;
-          font-size: 11px;
-          font-weight: 500;
-          background: #f1f5f9;
-          color: #64748b;
-          padding: 2px 7px;
-          border-radius: 5px;
-        }
-
-        /* Toolbar input */
         .tvp-search:focus {
           outline: none;
           border-color: ${meta.color} !important;
           box-shadow: 0 0 0 3px ${meta.color}22;
         }
 
-        /* Pagination button */
-        .pgbtn:hover:not(:disabled) { background: #f1f5f9 !important; }
+        .tvp-dept-card {
+          background: white;
+          border-radius: 14px;
+          border: 1px solid #f1f5f9;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+          animation: fadeUp 0.3s ease both;
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 16px 18px;
+          cursor: pointer;
+          text-align: left;
+          font-family: inherit;
+          transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+        }
+        .tvp-dept-card:hover {
+          box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+          transform: translateY(-1px);
+          border-color: ${meta.color}55;
+        }
 
         @media (max-width: 700px) {
           .tvp-dept-progress { display: none; }
@@ -534,12 +305,12 @@ export default function TrainingViewPage() {
             </div>
 
             {/* Summary pills */}
-            {!loading && total > 0 && (
+            {!loading && totalEmployees > 0 && (
               <div style={{ display: 'flex', gap: 10 }}>
                 {[
-                  { label: 'Total',    val: allRows.length.toLocaleString('id-ID'), bg: 'white',          col: '#0d2220', shadow: '0 1px 4px rgba(0,0,0,0.07)' },
-                  { label: 'Dept',     val: deptKeys.length,                        bg: fac?.bg ?? '#f1f5f9', col: fac?.color ?? '#64748b', shadow: 'none' },
-                  { label: 'Pre & Post', val: `${donePct}%`,                        bg: meta.color,       col: 'white',   shadow: `0 4px 14px ${meta.color}40` },
+                  { label: 'Total',      val: totalEmployees.toLocaleString('id-ID'), bg: 'white',          col: '#0d2220', shadow: '0 1px 4px rgba(0,0,0,0.07)' },
+                  { label: 'Dept',       val: depts.length,                           bg: fac?.bg ?? '#f1f5f9', col: fac?.color ?? '#64748b', shadow: 'none' },
+                  { label: 'Pre & Post', val: `${donePct}%`,                          bg: meta.color,       col: 'white',   shadow: `0 4px 14px ${meta.color}40` },
                 ].map(s => (
                   <div key={s.label} style={{
                     padding: '10px 18px', borderRadius: 12, textAlign: 'center',
@@ -553,75 +324,32 @@ export default function TrainingViewPage() {
             )}
           </div>
 
-          {/* Toolbar */}
+          {/* Search department */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            marginBottom: 14, flexWrap: 'wrap',
+            position: 'relative', maxWidth: 320, marginBottom: 16,
             animation: 'fadeUp 0.4s 0.07s ease both',
           }}>
-            {/* Filter tabs */}
-            <div style={{ display: 'flex', gap: 3, background: '#f1f5f9', borderRadius: 10, padding: 3 }}>
-              {filterTabs.map(t => (
-                <button
-                  key={t.key}
-                  onClick={() => handleFilter(t.key)}
-                  style={{
-                    padding: '7px 13px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                    fontFamily: 'inherit', fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
-                    background: filter === t.key ? meta.color : 'transparent',
-                    color: filter === t.key ? 'white' : '#64748b',
-                    boxShadow: filter === t.key ? `0 2px 8px ${meta.color}40` : 'none',
-                  }}
-                >{t.label}</button>
-              ))}
-            </div>
-
-            {/* Search */}
-            <div style={{ position: 'relative', flex: 1, maxWidth: 300 }}>
-              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
-                <IconSearch />
-              </span>
-              <input
-                className="tvp-search"
-                type="text"
-                placeholder="Cari NIK, nama, departemen…"
-                value={search}
-                onChange={e => handleSearch(e.target.value)}
-                style={{
-                  width: '100%', paddingLeft: 34, paddingRight: 14,
-                  paddingTop: 9, paddingBottom: 9,
-                  border: '1.5px solid #e2e8f0', borderRadius: 10,
-                  boxSizing: 'border-box', fontSize: 13, fontFamily: 'inherit',
-                  color: '#1a2e2d', background: 'white',
-                  transition: 'border-color 0.15s, box-shadow 0.15s',
-                }}
-              />
-            </div>
-
-            {/* Expand / collapse */}
-            <button
-              onClick={() => setOpenAll(v => !v)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '8px 13px', borderRadius: 10,
-                border: '1.5px solid #e2e8f0', background: 'white',
-                color: '#64748b', fontFamily: 'inherit',
-                fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                transition: 'border-color 0.15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = meta.color}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#e2e8f0'}
-            >
-              <IconChevDown open={openAll} />
-              {openAll ? 'Tutup Semua' : 'Buka Semua'}
-            </button>
-
-            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <IconUsers /> {allRows.length.toLocaleString('id-ID')} karyawan
+            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
+              <IconSearch />
             </span>
+            <input
+              className="tvp-search"
+              type="text"
+              placeholder="Cari department…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{
+                width: '100%', paddingLeft: 34, paddingRight: 14,
+                paddingTop: 9, paddingBottom: 9,
+                border: '1.5px solid #e2e8f0', borderRadius: 10,
+                boxSizing: 'border-box', fontSize: 13, fontFamily: 'inherit',
+                color: '#1a2e2d', background: 'white',
+                transition: 'border-color 0.15s, box-shadow 0.15s',
+              }}
+            />
           </div>
 
-          {/* Department accordions */}
+          {/* Department folder list */}
           <div style={{
             display: 'flex', flexDirection: 'column', gap: 8,
             animation: 'fadeUp 0.4s 0.12s ease both',
@@ -629,11 +357,11 @@ export default function TrainingViewPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} style={{
-                  background: 'white', borderRadius: 14, padding: '14px 16px',
-                  display: 'flex', alignItems: 'center', gap: 12,
+                  background: 'white', borderRadius: 14, padding: '16px 18px',
+                  display: 'flex', alignItems: 'center', gap: 14,
                   border: '1px solid #f1f5f9',
                 }}>
-                  <div className="skel" style={{ width: 13, height: 13, borderRadius: 3, flexShrink: 0 }} />
+                  <div className="skel" style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0 }} />
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div className="skel" style={{ height: 13, width: `${100 + i * 40}px` }} />
                     <div className="skel" style={{ height: 10, width: 70 }} />
@@ -641,91 +369,73 @@ export default function TrainingViewPage() {
                   <div className="skel" style={{ width: 110, height: 5, borderRadius: 50 }} />
                 </div>
               ))
-            ) : deptKeys.length === 0 ? (
+            ) : filteredDepts.length === 0 ? (
               <div style={{
                 background: 'white', borderRadius: 16, padding: '56px 16px',
                 textAlign: 'center', border: '1px solid #f1f5f9',
               }}>
                 <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#cbd5e1' }}>
-                  {search ? `Tidak ada hasil untuk "${search}"` : 'Belum ada data'}
+                  {search ? `Tidak ada department untuk "${search}"` : 'Belum ada data'}
                 </p>
               </div>
             ) : (
-              deptKeys.map(dept => (
-                <DeptAccordion
-                  key={dept}
-                  dept={dept}
-                  rows={grouped[dept]}
-                  color={meta.color}
-                  defaultOpen={openAll}
-                />
+              filteredDepts.map(d => (
+                <button
+                  key={d.dept}
+                  className="tvp-dept-card"
+                  onClick={() => goToDept(d.dept)}
+                >
+                  <span style={{
+                    width: 42, height: 42, borderRadius: 11, flexShrink: 0,
+                    background: meta.color + '14',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <IconFolder color={meta.color} />
+                  </span>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#0d2220' }}>{d.dept}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#94a3b8' }}>{d.total} karyawan</p>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="tvp-dept-progress" style={{ display: 'flex', alignItems: 'center', gap: 8, width: 110, flexShrink: 0 }}>
+                    <div style={{ flex: 1, height: 5, borderRadius: 50, background: '#f1f5f9', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 50,
+                        background: d.pct === 100 ? '#10b981' : meta.color,
+                        width: `${d.pct}%`,
+                      }} />
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: meta.color, minWidth: 32, textAlign: 'right' }}>
+                      {d.pct}%
+                    </span>
+                  </div>
+
+                  {/* Badges */}
+                  <div className="tvp-dept-badges" style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 50, background: '#dcfce7', color: '#16a34a' }}>
+                      {d.bothDone} selesai
+                    </span>
+                    {d.preOnly > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 50, background: '#dbeafe', color: '#2563eb' }}>
+                        {d.preOnly} pre
+                      </span>
+                    )}
+                    {d.noneYet > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 50, background: '#f1f5f9', color: '#94a3b8' }}>
+                        {d.noneYet} belum
+                      </span>
+                    )}
+                  </div>
+
+                  <span style={{ color: '#cbd5e1', flexShrink: 0 }}>
+                    <IconChevRight />
+                  </span>
+                </button>
               ))
             )}
           </div>
-
-          {/* Pagination */}
-          {!loading && total > PAGE_SIZE && (
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              marginTop: 20, flexWrap: 'wrap', gap: 10,
-              animation: 'fadeUp 0.4s 0.15s ease both',
-            }}>
-              <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
-                Halaman <strong style={{ color: '#475569' }}>{page}</strong> dari{' '}
-                <strong style={{ color: '#475569' }}>{totalPages}</strong>
-              </p>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button
-                  className="pgbtn"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  style={{
-                    width: 34, height: 34, borderRadius: 9, border: 'none',
-                    background: page === 1 ? '#f8fafc' : 'white',
-                    color: page === 1 ? '#cbd5e1' : '#475569',
-                    boxShadow: page === 1 ? 'none' : '0 1px 4px rgba(0,0,0,0.08)',
-                    cursor: page === 1 ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                ><IconChevLeft /></button>
-
-                {getPages().map((p, i) =>
-                  p === '...' ? (
-                    <span key={`e${i}`} style={{ color: '#cbd5e1', fontSize: 13, lineHeight: '34px', padding: '0 4px' }}>…</span>
-                  ) : (
-                    <button
-                      key={p}
-                      className="pgbtn"
-                      onClick={() => setPage(p as number)}
-                      style={{
-                        minWidth: 34, height: 34, padding: '0 6px',
-                        borderRadius: 9, border: 'none',
-                        background: page === p ? meta.color : 'white',
-                        color: page === p ? 'white' : '#475569',
-                        fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                        boxShadow: page === p ? `0 4px 12px ${meta.color}40` : '0 1px 4px rgba(0,0,0,0.08)',
-                        transition: 'all 0.15s',
-                      }}
-                    >{p}</button>
-                  )
-                )}
-
-                <button
-                  className="pgbtn"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  style={{
-                    width: 34, height: 34, borderRadius: 9, border: 'none',
-                    background: page === totalPages ? '#f8fafc' : 'white',
-                    color: page === totalPages ? '#cbd5e1' : '#475569',
-                    boxShadow: page === totalPages ? 'none' : '0 1px 4px rgba(0,0,0,0.08)',
-                    cursor: page === totalPages ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                ><IconChevRight /></button>
-              </div>
-            </div>
-          )}
 
         </div>
       </div>

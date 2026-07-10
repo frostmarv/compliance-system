@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { DotLottieReact } from '@lottiefiles/dotlottie-react'
 import hyundaiLogo from '@/assets/hyundai-ori-hitam.png'
 import zinusLogo from '@/assets/zinus-tulisan-putih-contour.webp'
+import quizIconAnimation from '@/assets/animations/QuizIcon.lottie'
 
 // ─── Icon Components ──────────────────────────────────────────────────────────
 
@@ -43,6 +45,20 @@ const LeafIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     <path d="M12 21C12 21 4 16 4 9.5C4 6.5 6.5 4 9.5 4C10.8 4 12 4.5 13 5.3C14 4.5 15.2 4 16.5 4C19.5 4 22 6.5 22 9.5C22 16 12 21 12 21Z" fill="#9ca3af" fillOpacity="0.12" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M12 21V12M12 12C12 12 9 10 7 8" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round"/>
+  </svg>
+)
+
+const RecycleIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="10.5" fill="#1a7a73" fillOpacity="0.08"/>
+    <g stroke="#1a7a73" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none">
+      <path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5"/>
+      <path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12"/>
+      <path d="m14 16-3 3 3 3"/>
+      <path d="M8.293 13.596 7.196 9.5 3.1 10.598"/>
+      <path d="m9.344 5.811 1.093-1.892A1.83 1.83 0 0 1 12.203 3a1.784 1.784 0 0 1 1.545.888l3.943 6.843"/>
+      <path d="m13.378 9.633 4.096 1.098 1.097-4.096"/>
+    </g>
   </svg>
 )
 
@@ -138,6 +154,14 @@ const quizzes: QuizItem[] = [
     sub: 'Pengelolaan limbah & lingkungan hidup',
     icon: <LeafIcon />,
     path: '/quiz/lingkungan',
+    active: true,
+  },
+  {
+    training_type: 'COMPLIANCE',
+    name: 'Limbah B3',
+    sub: 'Pengelolaan limbah bahan berbahaya & beracun',
+    icon: <RecycleIcon />,
+    path: '/quiz/limbah',
     active: true,
   },
   {
@@ -340,9 +364,19 @@ export default function QuizNavPage() {
           <p className="text-[11px] font-bold tracking-[2.5px] uppercase text-[#329F96] mb-1.5">
             Quiz Training
           </p>
-          <h1 className="font-display text-[clamp(24px,4vw,32px)] text-[#0d2220] leading-tight mb-1.5">
-            Pilih Kategori Ujian
-          </h1>
+          <div className="flex items-center gap-2 mb-1.5">
+            <h1 className="font-display text-[clamp(24px,4vw,32px)] text-[#0d2220] leading-tight">
+              Pilih Kategori Ujian
+            </h1>
+            <div style={{ width: 72, height: 72, flexShrink: 0, marginTop: -4 }}>
+              <DotLottieReact
+                src={quizIconAnimation}
+                autoplay
+                loop
+                style={{ width: '100%', height: '100%' }}
+              />
+            </div>
+          </div>
           <p className="text-[13.5px] text-[#7a9997] mb-7">
             Tersedia untuk seluruh karyawan Zinus Indonesia
           </p>

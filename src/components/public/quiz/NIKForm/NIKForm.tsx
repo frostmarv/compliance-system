@@ -1,6 +1,10 @@
-// ✅ FIX 1: Import types dengan keyword 'type'
+import { useEffect, useRef, useState } from 'react'
 import { computeQuizStatus, getStatusMessage } from '@/lib/quiz-status'
 import type { QuizSchedule, QuizStatus } from '@/lib/quiz-status'
+import { DotLottieReact } from '@lottiefiles/dotlottie-react'
+import type { DotLottie } from '@lottiefiles/dotlottie-react'
+import idCardAnimation from '@/assets/animations/ID-Card.lottie'
+import idVerifiedAnimation from '@/assets/animations/ID-Verified.lottie'
 
 interface NIKFormProps {
   // ── Quiz Context ──────────────────────────────────────────────
@@ -23,6 +27,10 @@ interface NIKFormProps {
   found?: boolean
   error?: string
   disabled?: boolean
+  /** Dipanggil sekali setelah popup verifikasi selesai animasi & ketutup.
+   *  Parent bisa pakai ini untuk baru menampilkan ErrorModal-nya sendiri,
+   *  supaya gak nongol bareng/nembus di belakang popup verifikasi. */
+  onVerificationDone?: () => void
 }
 
 export const NIKForm = ({
@@ -37,7 +45,8 @@ export const NIKForm = ({
   searching = false,
   found = false,
   error,
-  disabled = false
+  disabled = false,
+  onVerificationDone,
 }: NIKFormProps) => {
 
   // ─ Compute Status (Hanya cek waktu & manual lock) ─────────────
@@ -99,6 +108,81 @@ export const NIKForm = ({
   }
   const tone = toneStyles[message.tone]
 
+  // ── Sinkronisasi popup verifikasi dengan durasi animasi ────────
+  // `searching` bisa berubah false kapan aja (tergantung kecepatan DB),
+  // tapi kita gak mau motong animasi ID-Verified.lottie di tengah jalan.
+  // Jadi: popup baru beneran ketutup begitu animasi nyampe akhir loop
+  // (`onComplete`), bukan langsung pas `searching` jadi false.
+  const [popupVisible, setPopupVisible] = useState(false)
+  const dotLottieRef = useRef<DotLottie | null>(null)
+  const pendingCloseRef = useRef(false)
+  const [loopDurationMs, setLoopDurationMs] = useState(2500) // fallback sebelum durasi asli kebaca
+
+  useEffect(() => {
+    if (searching) {
+      pendingCloseRef.current = false
+      setPopupVisible(true)
+    } else {
+      // Tandai "boleh ditutup setelah loop ini selesai"
+      pendingCloseRef.current = true
+    }
+  }, [searching])
+
+  const closePopup = () => {
+    pendingCloseRef.current = false
+    setPopupVisible(false)
+    onVerificationDone?.()
+  }
+
+  const handleAnimationComplete = () => {
+    if (pendingCloseRef.current) {
+      closePopup()
+    }
+  }
+
+  // Attach event listener manual ke instance dotLottie.
+  // PENTING: dengan loop=true, event yang fire tiap 1 putaran selesai
+  // itu 'loop' — bukan 'complete' ('complete' cuma fire kalau loop=false
+  // atau pas animasi player di-stop). Jadi kita dengarin dua-duanya.
+  //
+  // Kita juga baca durasi ASLI animasi (totalFrames / frameRate) begitu
+  // player selesai load, biar safety-timeout di bawah gak nebak-nebak dan
+  // gak motong animasi sebelum sempat nyampe akhir loop.
+  const handleDotLottieRef = (instance: DotLottie | null) => {
+    if (dotLottieRef.current) {
+      dotLottieRef.current.removeEventListener('complete', handleAnimationComplete)
+      dotLottieRef.current.removeEventListener('loop', handleAnimationComplete)
+    }
+    dotLottieRef.current = instance
+    if (instance) {
+      instance.addEventListener('complete', handleAnimationComplete)
+      instance.addEventListener('loop', handleAnimationComplete)
+      instance.addEventListener('load', () => {
+        // Akses via `as any` karena nama properti (frameRate/totalFrames/duration)
+        // bisa beda antar versi @lottiefiles/dotlottie-react.
+        const inst = instance as any
+        const frames = inst.totalFrames ?? 0
+        const fps = inst.frameRate ?? inst.frameRate?.() ?? 30
+        const durationSec = inst.duration ?? (frames > 0 && fps > 0 ? frames / fps : 0)
+        if (durationSec > 0) {
+          setLoopDurationMs(Math.ceil(durationSec * 1000))
+        }
+      })
+    }
+  }
+
+  // Safety net: begitu searching selesai (pendingClose jadi true), kasih
+  // jendela selama 1 durasi loop penuh (+ buffer) buat nunggu event
+  // loop/complete nutup popup dengan mulus. Kalau lewat itu (mis. animasi
+  // gagal load), paksa tutup — supaya popup gak nyangkut selamanya.
+  useEffect(() => {
+    if (searching || !popupVisible) return
+    const safety = setTimeout(() => {
+      if (pendingCloseRef.current) closePopup()
+    }, loopDurationMs + 300)
+    return () => clearTimeout(safety)
+  }, [searching, popupVisible, loopDurationMs])
+
   // ── Loading Skeleton UI (Saat fetch schedule) ─────────────────
   if (scheduleLoading) {
     return (
@@ -144,11 +228,13 @@ export const NIKForm = ({
       </div>
 
       {/* ── Header ───────────────────────────────────────────── */}
-      <div className="nik-icon-wrap" style={{ color: tone.icon }}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round"
-            d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2" />
-        </svg>
+      <div className="nik-icon-wrap" style={{ width: 88, height: 88, margin: '0 auto', color: tone.icon }}>
+        <DotLottieReact
+          src={idCardAnimation}
+          autoplay
+          loop
+          style={{ width: '100%', height: '100%' }}
+        />
       </div>
 
       <div className="nik-title" style={{ color: tone.text }}>{quizName}</div>
@@ -194,9 +280,6 @@ export const NIKForm = ({
             cursor: isTimeValid ? 'text' : 'not-allowed'
           }}
         />
-
-        {/* Spinner saat searching */}
-        {searching && <div className="nik-spinner" />}
 
         {/* Checkmark saat found + valid */}
         {!searching && found && isTimeValid && (
@@ -274,22 +357,8 @@ export const NIKForm = ({
         </button>
       )}
 
-      {/* ─ Loading Skeleton (Saat verifikasi NIK) ───────────── */}
-      {searching && (
-        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[0.7, 0.5, 0.6].map((w, i) => (
-            <div key={i} style={{
-              height: 10, borderRadius: 99, background: '#F0F1F5',
-              width: `${w * 100}%`,
-              animation: 'pulse 1.5s ease-in-out infinite',
-              animationDelay: `${i * 0.15}s`
-            }} />
-          ))}
-        </div>
-      )}
-
       {/* ── Error Message ────────────────────────────────────── */}
-      {error && !searching && (
+      {error && !searching && !popupVisible && (
         <div style={{
           marginTop: 16,
           padding: '12px 16px',
@@ -300,6 +369,50 @@ export const NIKForm = ({
           fontSize: 13
         }}>
           ⚠️ {error}
+        </div>
+      )}
+
+      {/* ── Popup Verifikasi NIK (menggantikan spinner & skeleton lama) ── */}
+      {popupVisible && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,45,42,0.45)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 22,
+              padding: '32px 28px',
+              maxWidth: 300,
+              width: '90%',
+              textAlign: 'center',
+              boxShadow: '0 24px 60px -12px rgba(15,45,42,0.35)',
+            }}
+          >
+            <div style={{ width: 140, height: 140, margin: '0 auto' }}>
+              <DotLottieReact
+                dotLottieRefCallback={handleDotLottieRef}
+                src={idVerifiedAnimation}
+                autoplay
+                loop
+                style={{ width: '100%', height: '100%' }}
+              />
+            </div>
+            <p style={{ margin: '4px 0 4px', fontWeight: 700, fontSize: 15, color: '#0d2220' }}>
+              Memverifikasi NIK...
+            </p>
+            <p style={{ margin: 0, fontSize: 12.5, color: '#7a9997' }}>
+              Mohon tunggu sebentar
+            </p>
+          </div>
         </div>
       )}
     </div>

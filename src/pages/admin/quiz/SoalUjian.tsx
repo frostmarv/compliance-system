@@ -23,6 +23,7 @@ interface Soal {
   training_type_id: string
   factory: number | null
   type: 'pg' | 'tf'
+  test_type: 'pre' | 'post'
   question_number: number
   question_text: string
   options: Record<string, string>
@@ -48,6 +49,18 @@ function TypeBadge({ type }: { type: 'pg' | 'tf' }) {
   ) : (
     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-600 border border-amber-100">
       YA / TIDAK
+    </span>
+  )
+}
+
+function TestTypeBadge({ testType }: { testType: 'pre' | 'post' }) {
+  return testType === 'pre' ? (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-violet-50 text-violet-600 border border-violet-100">
+      PRE
+    </span>
+  ) : (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-pink-50 text-pink-600 border border-pink-100">
+      POST
     </span>
   )
 }
@@ -119,6 +132,7 @@ function ModalDetail({ soal, onClose }: { soal: Soal; onClose: () => void }) {
             <p className="text-white font-bold text-sm mt-0.5">{soal.category || '—'}</p>
           </div>
           <div className="flex items-center gap-2">
+            <TestTypeBadge testType={soal.test_type} />
             <TypeBadge type={soal.type} />
             <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -344,6 +358,7 @@ export default function SoalUjian() {
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'pg' | 'tf'>('all')
   const [filterFactory, setFilterFactory] = useState<'all' | '1' | '2' | '3' | 'null'>('all')
+  const [filterTestType, setFilterTestType] = useState<'all' | 'pre' | 'post'>('all')
   
   // Schedule modal state
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
@@ -386,8 +401,13 @@ export default function SoalUjian() {
     const matchSearch = s.question_text.toLowerCase().includes(search.toLowerCase()) || (s.category ?? '').toLowerCase().includes(search.toLowerCase())
     const matchType = filterType === 'all' || s.type === filterType
     const matchFactory = filterFactory === 'all' || (filterFactory === 'null' ? s.factory === null : String(s.factory) === filterFactory)
-    return matchSearch && matchType && matchFactory
+    const matchTestType = filterTestType === 'all' || s.test_type === filterTestType
+    return matchSearch && matchType && matchFactory && matchTestType
   })
+
+  // Ringkasan jumlah soal Pre vs Post untuk training yang aktif
+  const preCount = soalList.filter((s) => s.test_type === 'pre').length
+  const postCount = soalList.filter((s) => s.test_type === 'post').length
 
   const activeTraining = trainingTypes.find((t) => t.id === activeTab)
 
@@ -442,10 +462,18 @@ export default function SoalUjian() {
               [1, 2, 3].map((i) => <div key={i} className="h-9 w-32 rounded-t-lg bg-gray-100 animate-pulse" />)
             ) : (
               trainingTypes.map((t) => (
-                <button
+                <div
                   key={t.id}
-                  onClick={() => { setActiveTab(t.id); setSearch(''); setFilterType('all'); setFilterFactory('all') }}
-                  className="relative px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap flex items-center gap-2"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => { setActiveTab(t.id); setSearch(''); setFilterType('all'); setFilterFactory('all'); setFilterTestType('all') }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setActiveTab(t.id); setSearch(''); setFilterType('all'); setFilterFactory('all'); setFilterTestType('all')
+                    }
+                  }}
+                  className="relative px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-all duration-150 whitespace-nowrap flex items-center gap-2 cursor-pointer select-none"
                   style={activeTab === t.id ? { background: 'white', color: '#329F96', borderTop: '2px solid #329F96', borderLeft: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', marginBottom: '-1px', zIndex: 2 } : { color: '#9ca3af', background: 'transparent' }}
                 >
                   {t.name}
@@ -453,7 +481,7 @@ export default function SoalUjian() {
                   <button onClick={(e) => { e.stopPropagation(); openScheduleModal(t) }} className="ml-1 p-1 rounded hover:bg-gray-100 transition-colors" title="Atur Jadwal">
                     <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                   </button>
-                </button>
+                </div>
               ))
             )}
           </div>
@@ -485,17 +513,38 @@ export default function SoalUjian() {
           {/* ── Table ──────────────────────────────────────────── */}
           <div className="bg-white rounded-2xl overflow-hidden animate-fadein" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07), 0 8px 24px rgba(0,0,0,0.05)', animationDelay: '80ms', animationFillMode: 'both' }}>
             {/* Table header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
               <div>
                 <p className="text-sm font-bold text-gray-700">{activeTraining?.name ?? '—'}</p>
                 <p className="text-xs text-gray-400">{activeTraining?.code}</p>
               </div>
-              {activeTraining && (
-                <button onClick={() => openScheduleModal(activeTraining)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors" style={{ background: '#329F9615', color: '#329F96' }}>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  Atur Jadwal
-                </button>
-              )}
+
+              <div className="flex items-center gap-3">
+                {/* Segmented Pre / Post filter */}
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100">
+                  {([
+                    { key: 'all', label: `Semua (${soalList.length})` },
+                    { key: 'pre', label: `Pre (${preCount})` },
+                    { key: 'post', label: `Post (${postCount})` },
+                  ] as const).map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setFilterTestType(tab.key)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                      style={filterTestType === tab.key ? { background: 'white', color: '#329F96', boxShadow: '0 1px 2px rgba(0,0,0,0.08)' } : { color: '#9ca3af' }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {activeTraining && (
+                  <button onClick={() => openScheduleModal(activeTraining)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors" style={{ background: '#329F9615', color: '#329F96' }}>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Atur Jadwal
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -505,6 +554,7 @@ export default function SoalUjian() {
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-12">No.</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Pertanyaan</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-32">Kategori</th>
+                    <th className="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">Sesi</th>
                     <th className="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-32">Tipe</th>
                     <th className="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">Factory</th>
                     <th className="text-center px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">Aksi</th>
@@ -512,12 +562,13 @@ export default function SoalUjian() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {loadingSoal ? Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />) : filtered.length === 0 ? (
-                    <tr><td colSpan={6} className="text-center py-16 text-gray-300"><svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg><p className="text-sm">Tidak ada soal ditemukan</p></td></tr>
+                    <tr><td colSpan={7} className="text-center py-16 text-gray-300"><svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg><p className="text-sm">Tidak ada soal ditemukan</p></td></tr>
                   ) : filtered.map((soal, i) => (
                     <tr key={soal.id} className="hover:bg-gray-50/70 transition-colors animate-fadein" style={{ animationDelay: `${i * 30}ms`, animationFillMode: 'both' }}>
                       <td className="px-5 py-4"><span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold" style={{ background: '#329F9615', color: '#329F96' }}>{soal.question_number}</span></td>
                       <td className="px-5 py-4 max-w-xs"><p className="text-gray-700 line-clamp-2 leading-snug">{soal.question_text}</p></td>
                       <td className="px-5 py-4"><span className="text-xs text-gray-500">{soal.category ?? '—'}</span></td>
+                      <td className="px-5 py-4 text-center"><TestTypeBadge testType={soal.test_type} /></td>
                       <td className="px-5 py-4 text-center"><TypeBadge type={soal.type} /></td>
                       <td className="px-5 py-4 text-center"><FactoryBadge factory={soal.factory} /></td>
                       <td className="px-5 py-4 text-center"><button onClick={() => setSelectedSoal(soal)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors" style={{ background: '#329F9615', color: '#329F96' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#329F9625')} onMouseLeave={(e) => (e.currentTarget.style.background = '#329F9615')}><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>Detail</button></td>
